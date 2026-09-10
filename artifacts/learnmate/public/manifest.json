@@ -1,0 +1,13 @@
+{
+  "name": "Learnova AI",
+  "short_name": "Learnova",
+  "description": "AI-powered study companion for students",
+  "start_url": "/learnmate/",
+  "display": "standalone",
+  "background_color": "#f6f8fc",
+  "theme_color": "#2563eb",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/learnmate/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

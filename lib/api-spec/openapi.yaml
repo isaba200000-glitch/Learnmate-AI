@@ -1,0 +1,3530 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: LearnMate AI API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: dashboard
+    description: Dashboard summary
+  - name: profile
+    description: User profile
+  - name: notes
+    description: Notes management
+  - name: flashcards
+    description: Flashcard decks and cards
+  - name: quizzes
+    description: Quiz sessions
+  - name: study-plans
+    description: Study plans and tasks
+  - name: documents
+    description: PDF and document uploads
+  - name: progress
+    description: Progress and stats
+  - name: exam-types
+    description: Supported exam types
+  - name: openai
+    description: OpenAI AI chat and voice operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get dashboard summary
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /profile:
+    get:
+      operationId: getProfile
+      tags: [profile]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+    put:
+      operationId: updateProfile
+      tags: [profile]
+      summary: Update user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  /notes:
+    get:
+      operationId: listNotes
+      tags: [notes]
+      summary: List all notes
+      parameters:
+        - name: subject
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Note"
+    post:
+      operationId: createNote
+      tags: [notes]
+      summary: Create a new note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NoteInput"
+      responses:
+        "201":
+          description: Created note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+
+  /notes/{id}:
+    get:
+      operationId: getNote
+      tags: [notes]
+      summary: Get a note by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    patch:
+      operationId: updateNote
+      tags: [notes]
+      summary: Update a note
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NoteUpdate"
+      responses:
+        "200":
+          description: Updated note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      operationId: deleteNote
+      tags: [notes]
+      summary: Delete a note
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /flashcard-decks:
+    get:
+      operationId: listFlashcardDecks
+      tags: [flashcards]
+      summary: List all flashcard decks
+      responses:
+        "200":
+          description: List of flashcard decks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FlashcardDeck"
+    post:
+      operationId: createFlashcardDeck
+      tags: [flashcards]
+      summary: Create a new flashcard deck
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FlashcardDeckInput"
+      responses:
+        "201":
+          description: Created flashcard deck
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlashcardDeck"
+
+  /flashcard-decks/{id}:
+    get:
+      operationId: getFlashcardDeck
+      tags: [flashcards]
+      summary: Get a flashcard deck by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Flashcard deck with cards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlashcardDeckWithCards"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    patch:
+      operationId: updateFlashcardDeck
+      tags: [flashcards]
+      summary: Update a flashcard deck
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FlashcardDeckUpdate"
+      responses:
+        "200":
+          description: Updated flashcard deck
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlashcardDeck"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      operationId: deleteFlashcardDeck
+      tags: [flashcards]
+      summary: Delete a flashcard deck
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /flashcard-decks/{id}/cards:
+    get:
+      operationId: listFlashcardDeckCards
+      tags: [flashcards]
+      summary: List all cards in a deck
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of flashcards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Flashcard"
+    post:
+      operationId: createFlashcardDeckCard
+      tags: [flashcards]
+      summary: Add a card to a deck
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FlashcardInput"
+      responses:
+        "201":
+          description: Created flashcard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Flashcard"
+
+  /flashcard-decks/{id}/cards/{cardId}:
+    patch:
+      operationId: updateFlashcardDeckCard
+      tags: [flashcards]
+      summary: Update a flashcard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FlashcardUpdate"
+      responses:
+        "200":
+          description: Updated flashcard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Flashcard"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      operationId: deleteFlashcardDeckCard
+      tags: [flashcards]
+      summary: Delete a flashcard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /quiz-sessions:
+    get:
+      operationId: listQuizSessions
+      tags: [quizzes]
+      summary: List all quiz sessions
+      responses:
+        "200":
+          description: List of quiz sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuizSession"
+    post:
+      operationId: createQuizSession
+      tags: [quizzes]
+      summary: Create a new quiz session (AI generates questions)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuizSessionInput"
+      responses:
+        "201":
+          description: Created quiz session with questions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuizSessionWithQuestions"
+
+  /quiz-sessions/from-photo:
+    post:
+      operationId: createQuizFromPhoto
+      tags: [quizzes]
+      summary: "Premium: create a quiz from a photo of study material (AI reads the image)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhotoQuizInput"
+      responses:
+        "201":
+          description: Created quiz session with AI-generated questions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuizSessionWithQuestions"
+        "403":
+          description: Premium required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /quiz-sessions/{id}:
+    get:
+      operationId: getQuizSession
+      tags: [quizzes]
+      summary: Get quiz session with questions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Quiz session with questions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuizSessionWithQuestions"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /quiz-sessions/{id}/submit:
+    post:
+      operationId: submitQuizSession
+      tags: [quizzes]
+      summary: Submit quiz answers and get results
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuizSubmission"
+      responses:
+        "200":
+          description: Quiz results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuizResult"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /study-plans:
+    get:
+      operationId: listStudyPlans
+      tags: [study-plans]
+      summary: List all study plans
+      responses:
+        "200":
+          description: List of study plans with their tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StudyPlanWithTasks"
+    post:
+      operationId: createStudyPlan
+      tags: [study-plans]
+      summary: Create a study plan (AI generates tasks)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudyPlanInput"
+      responses:
+        "201":
+          description: Created study plan with tasks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudyPlanWithTasks"
+
+  /study-plans/{id}:
+    get:
+      operationId: getStudyPlan
+      tags: [study-plans]
+      summary: Get study plan with tasks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Study plan with tasks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudyPlanWithTasks"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    patch:
+      operationId: updateStudyPlan
+      tags: [study-plans]
+      summary: Update a study plan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudyPlanUpdate"
+      responses:
+        "200":
+          description: Updated study plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudyPlan"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      operationId: deleteStudyPlan
+      tags: [study-plans]
+      summary: Delete a study plan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /study-plans/{id}/tasks/{taskId}:
+    patch:
+      operationId: updateStudyTask
+      tags: [study-plans]
+      summary: Update a study task (e.g. mark complete)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudyTaskUpdate"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudyTask"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /documents:
+    get:
+      operationId: listDocuments
+      tags: [documents]
+      summary: List all uploaded documents
+      responses:
+        "200":
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Document"
+    post:
+      operationId: createDocument
+      tags: [documents]
+      summary: Upload a document (base64 encoded)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentInput"
+      responses:
+        "201":
+          description: Created document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+
+  /documents/{id}:
+    get:
+      operationId: getDocument
+      tags: [documents]
+      summary: Get a document with AI-generated details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Document with details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentWithDetails"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      operationId: deleteDocument
+      tags: [documents]
+      summary: Delete a document
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /documents/{id}/process:
+    post:
+      operationId: processDocument
+      tags: [documents]
+      summary: Process a document with AI (generates summary, flashcards, quiz)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Processing result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /progress/stats:
+    get:
+      operationId: getProgressStats
+      tags: [progress]
+      summary: Get detailed learning progress and stats
+      responses:
+        "200":
+          description: Progress stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgressStats"
+
+  /exam-types:
+    get:
+      operationId: listExamTypes
+      tags: [exam-types]
+      summary: List supported exam types
+      responses:
+        "200":
+          description: List of exam types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExamType"
+
+  /openai/conversations:
+    get:
+      operationId: listOpenaiConversations
+      tags: [openai]
+      summary: List all AI tutor conversations
+      responses:
+        "200":
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OpenaiConversation"
+    post:
+      operationId: createOpenaiConversation
+      tags: [openai]
+      summary: Create a new AI tutor conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpenaiConversationInput"
+      responses:
+        "201":
+          description: Created conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiConversation"
+
+  /openai/conversations/{id}:
+    get:
+      operationId: getOpenaiConversation
+      tags: [openai]
+      summary: Get conversation with messages
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Conversation with messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiConversationWithMessages"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      operationId: deleteOpenaiConversation
+      tags: [openai]
+      summary: Delete a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /openai/conversations/{id}/messages:
+    get:
+      operationId: listOpenaiMessages
+      tags: [openai]
+      summary: List messages in a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OpenaiMessage"
+    post:
+      operationId: sendOpenaiMessage
+      tags: [openai]
+      summary: Send a text message and receive a streaming response
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpenaiMessageInput"
+      responses:
+        "200":
+          description: SSE stream of assistant text chunks
+          content:
+            text/event-stream: {}
+
+  /premium/available-plans:
+    get:
+      operationId: getAvailablePlans
+      tags: [premium]
+      summary: List payment tiers currently configured on the server
+      description: |
+        Returns which plans the frontend should show. When `yearly.available` is
+        false, the yearly tier card should be hidden — the yearly checkout
+        endpoint will return 503 if called anyway.
+      responses:
+        "200":
+          description: Available plan tiers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvailablePlans"
+
+  /premium/subscription:
+    get:
+      operationId: getSubscription
+      tags: [premium]
+      summary: Get the current user's subscription status
+      responses:
+        "200":
+          description: Subscription status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionInfo"
+
+  /premium/payments:
+    get:
+      operationId: listMyPayments
+      tags: [premium]
+      summary: List the current user's payment submissions
+      responses:
+        "200":
+          description: List of payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payment"
+
+  /premium/whop/checkout:
+    post:
+      operationId: createWhopCheckout
+      tags: [premium]
+      summary: Create a Whop hosted card checkout and return the payment URL
+      responses:
+        "200":
+          description: Checkout created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhopCheckoutResult"
+
+  /premium/whop/verify:
+    post:
+      operationId: verifyWhopCheckout
+      tags: [premium]
+      summary: Verify the user's Whop card payment and activate premium
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhopVerifyResult"
+
+  /premium/smart-notes:
+    post:
+      operationId: generateSmartNotes
+      tags: [premium]
+      summary: Generate, summarize, or solve study notes with AI (premium)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SmartNotesInput"
+      responses:
+        "200":
+          description: Generated notes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SmartNotesResult"
+        "403":
+          description: Premium required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /premium/important-questions:
+    post:
+      operationId: generateImportantQuestions
+      tags: [premium]
+      summary: Generate likely exam questions with answers (premium)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportantQuestionsInput"
+      responses:
+        "200":
+          description: Important questions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportantQuestionsResult"
+        "403":
+          description: Premium required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /language/overview:
+    get:
+      operationId: getLanguageOverview
+      tags: [language]
+      summary: Daily language practice overview (time, plan, progress, words)
+      parameters:
+        - name: language
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [English, Spanish, French, Portuguese, German, Arabic, Hindi, Japanese]
+      responses:
+        "200":
+          description: Language practice overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LanguageOverview"
+
+  /language/tick:
+    post:
+      operationId: languageTick
+      tags: [language]
+      summary: Heartbeat that credits active practice time (server-side clock)
+      responses:
+        "200":
+          description: Updated usage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LanguageTickResult"
+
+  /language/exercises:
+    post:
+      operationId: generateLanguageExercises
+      tags: [language]
+      summary: Generate a batch of AI language exercises
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LanguageExercisesInput"
+      responses:
+        "200":
+          description: Generated exercises
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LanguageExercisesResult"
+        "403":
+          description: Daily practice time used up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /language/grade-sentence:
+    post:
+      operationId: gradeLanguageSentence
+      tags: [language]
+      summary: Grade a student's sentence correction with AI feedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GradeSentenceInput"
+      responses:
+        "200":
+          description: Grading result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GradeSentenceResult"
+        "403":
+          description: Daily practice time used up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /language/grade-translation:
+    post:
+      operationId: gradeLanguageTranslation
+      tags: [language]
+      summary: Grade a student's English translation of a sentence with AI feedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GradeTranslationInput"
+      responses:
+        "200":
+          description: Grading result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GradeSentenceResult"
+        "403":
+          description: Daily practice time used up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /language/complete:
+    post:
+      operationId: completeLanguageExercise
+      tags: [language]
+      summary: Record a finished exercise (streak, counters, learned words)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LanguageCompleteInput"
+      responses:
+        "200":
+          description: Updated progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LanguageProgressResult"
+
+  /exam-plans:
+    get:
+      operationId: listExamPlans
+      tags: [exam-plans]
+      summary: List the student's exam plans with their plan limits
+      responses:
+        "200":
+          description: Exam plans and limits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExamPlanList"
+    post:
+      operationId: createExamPlan
+      tags: [exam-plans]
+      summary: Create an exam plan (AI-generated day-by-day schedule)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExamPlanInput"
+      responses:
+        "201":
+          description: Generated plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExamPlanDetail"
+        "403":
+          description: Free plan limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /exam-plans/{planId}:
+    get:
+      operationId: getExamPlan
+      tags: [exam-plans]
+      summary: Get one exam plan with its day-by-day schedule
+      parameters:
+        - name: planId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Plan detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExamPlanDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      operationId: deleteExamPlan
+      tags: [exam-plans]
+      summary: Delete an exam plan
+      parameters:
+        - name: planId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /exam-plans/{planId}/regenerate:
+    post:
+      operationId: regenerateExamPlan
+      tags: [exam-plans]
+      summary: Regenerate the plan's schedule (Premium)
+      parameters:
+        - name: planId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegenerateExamPlanInput"
+      responses:
+        "200":
+          description: Regenerated plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExamPlanDetail"
+        "403":
+          description: Premium required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /exam-plans/{planId}/days/{dayId}:
+    patch:
+      operationId: updateExamPlanDay
+      tags: [exam-plans]
+      summary: Mark a plan day complete or not complete
+      parameters:
+        - name: planId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: dayId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateExamPlanDayInput"
+      responses:
+        "200":
+          description: Updated day and plan progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExamPlanDayUpdateResult"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /focus/overview:
+    get:
+      operationId: getFocusOverview
+      tags: [focus]
+      summary: Focus Mode limits, stats and session history
+      responses:
+        "200":
+          description: Focus overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FocusOverview"
+
+  /focus/sessions:
+    post:
+      operationId: saveFocusSession
+      tags: [focus]
+      summary: Save a completed focus session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveFocusSessionInput"
+      responses:
+        "201":
+          description: Saved session with computed score
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FocusSessionItem"
+        "400":
+          description: Invalid session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /assistant/overview:
+    get:
+      operationId: getAssistantOverview
+      tags: [assistant]
+      summary: Assistant limits, remaining questions and conversation list
+      responses:
+        "200":
+          description: Assistant overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssistantOverview"
+
+  /assistant/conversations/{conversationId}:
+    get:
+      operationId: getAssistantConversation
+      tags: [assistant]
+      summary: Full message history of a conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Conversation with messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssistantConversationDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      operationId: deleteAssistantConversation
+      tags: [assistant]
+      summary: Delete a conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /admin/login:
+    post:
+      operationId: adminLogin
+      tags: [admin]
+      summary: Log in to the admin panel with a password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLoginInput"
+      responses:
+        "200":
+          description: Admin session token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSession"
+        "401":
+          description: Incorrect password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /admin/session:
+    get:
+      operationId: checkAdminSession
+      tags: [admin]
+      summary: Verify the admin session token is valid
+      responses:
+        "200":
+          description: Session valid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSessionCheck"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /admin/payments:
+    get:
+      operationId: listAdminPayments
+      tags: [admin]
+      summary: List payment submissions (admin)
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, approved, rejected]
+      responses:
+        "200":
+          description: List of payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminPayment"
+
+  /admin/payments/{id}/approve:
+    post:
+      operationId: approvePayment
+      tags: [admin]
+      summary: Approve a payment and activate premium
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Approved payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPayment"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Already processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /admin/payments/{id}/reject:
+    post:
+      operationId: rejectPayment
+      tags: [admin]
+      summary: Reject a payment submission
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminRejectInput"
+      responses:
+        "200":
+          description: Rejected payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPayment"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Summary stats for the admin dashboard
+      responses:
+        "200":
+          description: Admin summary stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      tags: [admin]
+      summary: List users with premium status (admin)
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminUser"
+
+  /admin/users/{userId}/premium:
+    post:
+      operationId: setUserPremium
+      tags: [admin]
+      summary: Grant or revoke premium for a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminPremiumInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUser"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /admin/settings:
+    get:
+      operationId: getAdminSettings
+      tags: [admin]
+      summary: Get owner-editable premium plan settings
+      responses:
+        "200":
+          description: Current plan settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSettings"
+    put:
+      operationId: updateAdminSettings
+      tags: [admin]
+      summary: Update premium plan settings (bKash number, price, duration)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminSettings"
+      responses:
+        "200":
+          description: Updated plan settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSettings"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    DashboardSummary:
+      type: object
+      properties:
+        userName:
+          type: string
+        xp:
+          type: integer
+        streak:
+          type: integer
+        level:
+          type: integer
+        coins:
+          type: integer
+        studyTimeToday:
+          type: integer
+          description: Study time in minutes today
+        studyTimeWeek:
+          type: integer
+          description: Study time in minutes this week
+        notesCount:
+          type: integer
+        flashcardDecksCount:
+          type: integer
+        quizzesCompletedCount:
+          type: integer
+        documentsCount:
+          type: integer
+        recentQuizSessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuizSession"
+        activeStudyPlans:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudyPlan"
+        todayTasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudyTask"
+        weeklyXp:
+          type: array
+          items:
+            type: object
+            properties:
+              day:
+                type: string
+              xp:
+                type: integer
+            required:
+              - day
+              - xp
+      required:
+        - userName
+        - xp
+        - streak
+        - level
+        - coins
+        - studyTimeToday
+        - studyTimeWeek
+        - notesCount
+        - flashcardDecksCount
+        - quizzesCompletedCount
+        - documentsCount
+        - recentQuizSessions
+        - activeStudyPlans
+        - todayTasks
+        - weeklyXp
+
+    UserProfile:
+      type: object
+      properties:
+        userId:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        photoUrl:
+          type: ["string", "null"]
+        country:
+          type: ["string", "null"]
+        educationLevel:
+          type: ["string", "null"]
+        subjects:
+          type: array
+          items:
+            type: string
+        goals:
+          type: ["string", "null"]
+        learningLanguage:
+          type: ["string", "null"]
+        xp:
+          type: integer
+        streak:
+          type: integer
+        level:
+          type: integer
+        coins:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - userId
+        - name
+        - email
+        - photoUrl
+        - country
+        - educationLevel
+        - subjects
+        - goals
+        - learningLanguage
+        - xp
+        - streak
+        - level
+        - coins
+        - createdAt
+
+    UserProfileUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        photoUrl:
+          type: string
+        country:
+          type: string
+        educationLevel:
+          type: string
+        subjects:
+          type: array
+          items:
+            type: string
+        goals:
+          type: string
+        learningLanguage:
+          type: string
+
+    Note:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+        subject:
+          type: ["string", "null"]
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - title
+        - content
+        - subject
+        - tags
+        - createdAt
+        - updatedAt
+
+    NoteInput:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        subject:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+      required:
+        - title
+        - content
+
+    NoteUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        subject:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    FlashcardDeck:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        title:
+          type: string
+        subject:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        cardCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - title
+        - subject
+        - description
+        - cardCount
+        - createdAt
+        - updatedAt
+
+    FlashcardDeckWithCards:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        title:
+          type: string
+        subject:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        cardCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        cards:
+          type: array
+          items:
+            $ref: "#/components/schemas/Flashcard"
+      required:
+        - id
+        - userId
+        - title
+        - subject
+        - description
+        - cardCount
+        - createdAt
+        - updatedAt
+        - cards
+
+    FlashcardDeckInput:
+      type: object
+      properties:
+        title:
+          type: string
+        subject:
+          type: string
+        description:
+          type: string
+      required:
+        - title
+
+    FlashcardDeckUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        subject:
+          type: string
+        description:
+          type: string
+
+    Flashcard:
+      type: object
+      properties:
+        id:
+          type: integer
+        deckId:
+          type: integer
+        front:
+          type: string
+        back:
+          type: string
+        difficulty:
+          type: ["string", "null"]
+        isBookmarked:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - deckId
+        - front
+        - back
+        - difficulty
+        - isBookmarked
+        - createdAt
+
+    FlashcardInput:
+      type: object
+      properties:
+        front:
+          type: string
+        back:
+          type: string
+        difficulty:
+          type: string
+      required:
+        - front
+        - back
+
+    FlashcardUpdate:
+      type: object
+      properties:
+        front:
+          type: string
+        back:
+          type: string
+        difficulty:
+          type: string
+        isBookmarked:
+          type: boolean
+
+    QuizSession:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        subject:
+          type: string
+        examType:
+          type: ["string", "null"]
+        totalQuestions:
+          type: integer
+        correctAnswers:
+          type: ["integer", "null"]
+        score:
+          type: ["number", "null"]
+        source:
+          type: string
+          enum: [manual, photo]
+        status:
+          type: string
+          enum: [pending, completed]
+        imageUrl:
+          type: ["string", "null"]
+          description: |
+            The photographed page (data URL) for source = "photo" sessions.
+            Persisted so the student can review the original material
+            alongside the AI-generated questions. null for manual quizzes
+            and for photo quizzes whose image was larger than the 1.5 MB
+            persistence ceiling.
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: ["string", "null"]
+          format: date-time
+      required:
+        - id
+        - userId
+        - subject
+        - examType
+        - totalQuestions
+        - correctAnswers
+        - score
+        - status
+        - createdAt
+        - completedAt
+
+    QuizSessionWithQuestions:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        subject:
+          type: string
+        examType:
+          type: ["string", "null"]
+        totalQuestions:
+          type: integer
+        correctAnswers:
+          type: ["integer", "null"]
+        score:
+          type: ["number", "null"]
+        source:
+          type: string
+          enum: [manual, photo]
+        status:
+          type: string
+          enum: [pending, completed]
+        imageUrl:
+          type: ["string", "null"]
+          description: The photographed page (data URL) for source = "photo" sessions, otherwise null.
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: ["string", "null"]
+          format: date-time
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuizQuestion"
+      required:
+        - id
+        - userId
+        - subject
+        - examType
+        - totalQuestions
+        - correctAnswers
+        - score
+        - status
+        - createdAt
+        - completedAt
+        - questions
+
+    QuizQuestion:
+      type: object
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        question:
+          type: string
+        type:
+          type: string
+          enum: [multiple_choice, true_false, short_answer]
+        options:
+          type: array
+          items:
+            type: string
+        correctAnswer:
+          type: string
+        userAnswer:
+          type: ["string", "null"]
+        explanation:
+          type: ["string", "null"]
+        isCorrect:
+          type: ["boolean", "null"]
+      required:
+        - id
+        - sessionId
+        - question
+        - type
+        - options
+        - correctAnswer
+        - userAnswer
+        - explanation
+        - isCorrect
+
+    QuizSessionInput:
+      type: object
+      properties:
+        subject:
+          type: string
+        examType:
+          type: string
+        totalQuestions:
+          type: integer
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+      required:
+        - subject
+        - totalQuestions
+
+    PhotoQuizInput:
+      type: object
+      properties:
+        imageBase64:
+          type: string
+          description: The photo as a base64 data URL (data:image/jpeg;base64,...)
+        totalQuestions:
+          type: integer
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+      required:
+        - imageBase64
+
+    QuizSubmission:
+      type: object
+      properties:
+        answers:
+          type: array
+          items:
+            type: object
+            properties:
+              questionId:
+                type: integer
+              answer:
+                type: string
+            required:
+              - questionId
+              - answer
+      required:
+        - answers
+
+    QuizResult:
+      type: object
+      properties:
+        sessionId:
+          type: integer
+        score:
+          type: number
+        correctAnswers:
+          type: integer
+        totalQuestions:
+          type: integer
+        xpEarned:
+          type: integer
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuizQuestion"
+      required:
+        - sessionId
+        - score
+        - correctAnswers
+        - totalQuestions
+        - xpEarned
+        - questions
+
+    StudyPlan:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        title:
+          type: string
+        examDate:
+          type: ["string", "null"]
+          format: date
+        subjects:
+          type: array
+          items:
+            type: string
+        studyHoursPerDay:
+          type: integer
+        goals:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [active, completed, paused]
+        taskCount:
+          type: integer
+        completedTaskCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - title
+        - examDate
+        - subjects
+        - studyHoursPerDay
+        - goals
+        - status
+        - taskCount
+        - completedTaskCount
+        - createdAt
+
+    StudyPlanWithTasks:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        title:
+          type: string
+        examDate:
+          type: ["string", "null"]
+          format: date
+        subjects:
+          type: array
+          items:
+            type: string
+        studyHoursPerDay:
+          type: integer
+        goals:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [active, completed, paused]
+        taskCount:
+          type: integer
+        completedTaskCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudyTask"
+      required:
+        - id
+        - userId
+        - title
+        - examDate
+        - subjects
+        - studyHoursPerDay
+        - goals
+        - status
+        - taskCount
+        - completedTaskCount
+        - createdAt
+        - tasks
+
+    StudyPlanInput:
+      type: object
+      properties:
+        title:
+          type: string
+        examDate:
+          type: string
+          format: date
+        subjects:
+          type: array
+          items:
+            type: string
+        studyHoursPerDay:
+          type: integer
+        goals:
+          type: string
+      required:
+        - title
+        - subjects
+        - studyHoursPerDay
+
+    StudyPlanUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        examDate:
+          type: string
+          format: date
+        subjects:
+          type: array
+          items:
+            type: string
+        studyHoursPerDay:
+          type: integer
+        goals:
+          type: string
+        status:
+          type: string
+          enum: [active, completed, paused]
+
+    StudyTask:
+      type: object
+      properties:
+        id:
+          type: integer
+        planId:
+          type: integer
+        title:
+          type: string
+        subject:
+          type: ["string", "null"]
+        scheduledDate:
+          type: string
+          format: date
+        durationMinutes:
+          type: integer
+        completed:
+          type: boolean
+      required:
+        - id
+        - planId
+        - title
+        - subject
+        - scheduledDate
+        - durationMinutes
+        - completed
+
+    StudyTaskUpdate:
+      type: object
+      properties:
+        completed:
+          type: boolean
+        title:
+          type: string
+        scheduledDate:
+          type: string
+          format: date
+
+    Document:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        title:
+          type: string
+        filename:
+          type: string
+        summary:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, processing, processed, failed]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - title
+        - filename
+        - summary
+        - status
+        - createdAt
+
+    DocumentWithDetails:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        title:
+          type: string
+        filename:
+          type: string
+        content:
+          type: ["string", "null"]
+        summary:
+          type: ["string", "null"]
+        keyConcepts:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [pending, processing, processed, failed]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - title
+        - filename
+        - content
+        - summary
+        - keyConcepts
+        - status
+        - createdAt
+
+    DocumentInput:
+      type: object
+      properties:
+        title:
+          type: string
+        filename:
+          type: string
+        content:
+          type: string
+          description: Base64-encoded file content or raw text
+      required:
+        - title
+        - filename
+        - content
+
+    ProgressStats:
+      type: object
+      properties:
+        xp:
+          type: integer
+        level:
+          type: integer
+        streak:
+          type: integer
+        coins:
+          type: integer
+        totalStudyMinutes:
+          type: integer
+        notesCreated:
+          type: integer
+        flashcardsReviewed:
+          type: integer
+        quizzesCompleted:
+          type: integer
+        averageQuizScore:
+          type: number
+        documentsProcessed:
+          type: integer
+        achievements:
+          type: array
+          items:
+            $ref: "#/components/schemas/Achievement"
+        subjectBreakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              subject:
+                type: string
+              count:
+                type: integer
+              percentage:
+                type: number
+            required:
+              - subject
+              - count
+              - percentage
+        recentActivity:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              description:
+                type: string
+              xpEarned:
+                type: integer
+              createdAt:
+                type: string
+                format: date-time
+            required:
+              - type
+              - description
+              - xpEarned
+              - createdAt
+      required:
+        - xp
+        - level
+        - streak
+        - coins
+        - totalStudyMinutes
+        - notesCreated
+        - flashcardsReviewed
+        - quizzesCompleted
+        - averageQuizScore
+        - documentsProcessed
+        - achievements
+        - subjectBreakdown
+        - recentActivity
+
+    Achievement:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        icon:
+          type: string
+        earnedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - title
+        - description
+        - icon
+        - earnedAt
+
+    ExamType:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+      required:
+        - id
+        - name
+        - category
+        - description
+
+    OpenaiConversation:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        title:
+          type: string
+        subject:
+          type: ["string", "null"]
+        messageCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - title
+        - subject
+        - messageCount
+        - createdAt
+        - updatedAt
+
+    OpenaiConversationWithMessages:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        title:
+          type: string
+        subject:
+          type: ["string", "null"]
+        messageCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/OpenaiMessage"
+      required:
+        - id
+        - userId
+        - title
+        - subject
+        - messageCount
+        - createdAt
+        - updatedAt
+        - messages
+
+    OpenaiConversationInput:
+      type: object
+      properties:
+        title:
+          type: string
+        subject:
+          type: string
+      required:
+        - title
+
+    OpenaiMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        role:
+          type: string
+          enum: [user, assistant, system]
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - conversationId
+        - role
+        - content
+        - createdAt
+
+    OpenaiMessageInput:
+      type: object
+      properties:
+        content:
+          type: string
+        explanationLevel:
+          type: string
+          enum: [elementary, middle_school, high_school, university, professional]
+      required:
+        - content
+
+    PremiumPlan:
+      type: object
+      properties:
+        price:
+          type: integer
+        days:
+          type: integer
+        bkashNumber:
+          type: string
+      required:
+        - price
+        - days
+        - bkashNumber
+
+    WhopCheckoutResult:
+      type: object
+      properties:
+        url:
+          type: string
+      required: [url]
+
+    WhopVerifyResult:
+      type: object
+      properties:
+        granted:
+          type: boolean
+        alreadyActive:
+          type: boolean
+        expiresAt:
+          type: string
+          nullable: true
+      required: [granted, alreadyActive]
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+        trxId:
+          type: string
+        senderNumber:
+          type: string
+        amount:
+          type: integer
+        plan:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        reviewNote:
+          type: ["string", "null"]
+        reviewedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - trxId
+        - senderNumber
+        - amount
+        - plan
+        - status
+        - createdAt
+
+    AvailablePlans:
+      type: object
+      properties:
+        monthly:
+          type: object
+          properties:
+            available:
+              type: boolean
+          required: [available]
+        yearly:
+          type: object
+          properties:
+            available:
+              type: boolean
+          required: [available]
+      required: [monthly, yearly]
+
+    SubscriptionInfo:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [none, pending, active, rejected, expired]
+        expiresAt:
+          type: ["string", "null"]
+          format: date-time
+        isOwner:
+          type: boolean
+          description: True only for the owner account (lifetime premium + admin access)
+        plan:
+          $ref: "#/components/schemas/PremiumPlan"
+        latestPayment:
+          $ref: "#/components/schemas/Payment"
+      required:
+        - status
+        - isOwner
+        - plan
+
+    LanguageWordItem:
+      type: object
+      properties:
+        word:
+          type: string
+        meaning:
+          type: string
+        meaningBangla:
+          type: string
+        example:
+          type: string
+      required: [word, meaning, meaningBangla, example]
+
+    LanguageOverview:
+      type: object
+      properties:
+        usedSeconds:
+          type: integer
+        capSeconds:
+          type: ["integer", "null"]
+          description: Daily cap in seconds; null means unlimited (owner)
+        remainingSeconds:
+          type: ["integer", "null"]
+        locked:
+          type: boolean
+        resetsAt:
+          type: string
+          format: date-time
+        plan:
+          type: string
+          enum: [free, premium, owner]
+        streak:
+          type: integer
+        bestStreak:
+          type: integer
+        exercisesCompleted:
+          type: integer
+        correctAnswers:
+          type: integer
+        wordsLearned:
+          type: integer
+        practicedToday:
+          type: boolean
+        recentWords:
+          type: array
+          items:
+            $ref: "#/components/schemas/LanguageWordItem"
+      required:
+        - usedSeconds
+        - capSeconds
+        - remainingSeconds
+        - locked
+        - resetsAt
+        - plan
+        - streak
+        - bestStreak
+        - exercisesCompleted
+        - correctAnswers
+        - wordsLearned
+        - practicedToday
+        - recentWords
+
+    LanguageTickResult:
+      type: object
+      properties:
+        usedSeconds:
+          type: integer
+        capSeconds:
+          type: ["integer", "null"]
+        remainingSeconds:
+          type: ["integer", "null"]
+        locked:
+          type: boolean
+        resetsAt:
+          type: string
+          format: date-time
+        plan:
+          type: string
+          enum: [free, premium, owner]
+      required: [usedSeconds, capSeconds, remainingSeconds, locked, resetsAt, plan]
+
+    LanguageExercisesInput:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [vocab, grammar, sentence, translate]
+        difficulty:
+          type: string
+          enum: [beginner, intermediate, advanced]
+        language:
+          type: string
+          enum: [English, Spanish, French, Portuguese, German, Arabic, Hindi, Japanese]
+      required: [mode]
+
+    LanguageExercise:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [vocab, grammar, sentence, translate]
+        sentence:
+          type: string
+        word:
+          type: string
+        question:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        correctIndex:
+          type: integer
+        meaning:
+          type: string
+        meaningBangla:
+          type: string
+        example:
+          type: string
+        explanation:
+          type: string
+        incorrect:
+          type: string
+        hint:
+          type: string
+        translation:
+          type: string
+        glossary:
+          type: array
+          items:
+            $ref: "#/components/schemas/WordGloss"
+      required: [type]
+
+    WordGloss:
+      type: object
+      properties:
+        term:
+          type: string
+        english:
+          type: string
+      required: [term, english]
+
+    LanguageExercisesResult:
+      type: object
+      properties:
+        exercises:
+          type: array
+          items:
+            $ref: "#/components/schemas/LanguageExercise"
+      required: [exercises]
+
+    GradeTranslationInput:
+      type: object
+      properties:
+        sentence:
+          type: string
+        answer:
+          type: string
+        language:
+          type: string
+          enum: [English, Spanish, French, Portuguese, German, Arabic, Hindi, Japanese]
+      required: [sentence, answer]
+
+    GradeSentenceInput:
+      type: object
+      properties:
+        incorrect:
+          type: string
+        answer:
+          type: string
+        language:
+          type: string
+          enum: [English, Spanish, French, Portuguese, German, Arabic, Hindi, Japanese]
+      required: [incorrect, answer]
+
+    GradeSentenceResult:
+      type: object
+      properties:
+        correct:
+          type: boolean
+        corrected:
+          type: string
+        feedback:
+          type: string
+      required: [correct, corrected, feedback]
+
+    ExamPlanSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        batch:
+          type: string
+          enum: [gcse, a-level, ssc, hsc]
+        title:
+          type: string
+        examDate:
+          type: string
+          format: date
+        subjects:
+          type: array
+          items:
+            type: string
+        weakTopics:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [active, archived]
+        dayCount:
+          type: integer
+        completedDayCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - batch
+        - title
+        - examDate
+        - subjects
+        - weakTopics
+        - status
+        - dayCount
+        - completedDayCount
+        - createdAt
+
+    ExamPlanDay:
+      type: object
+      properties:
+        id:
+          type: integer
+        dayIndex:
+          type: integer
+        date:
+          type: string
+          format: date
+        subject:
+          type: string
+        topic:
+          type: string
+        focus:
+          type: string
+        explanation:
+          type: string
+        completed:
+          type: boolean
+      required: [id, dayIndex, date, subject, topic, focus, explanation, completed]
+
+    ExamPlanLimits:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: [free, premium, owner]
+        maxActivePlans:
+          type: ["integer", "null"]
+          description: Max active plans; null means unlimited
+        maxHorizonDays:
+          type: integer
+        canCreate:
+          type: boolean
+        canRegenerate:
+          type: boolean
+      required: [plan, maxActivePlans, maxHorizonDays, canCreate, canRegenerate]
+
+    ExamPlanList:
+      type: object
+      properties:
+        plans:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExamPlanSummary"
+        limits:
+          $ref: "#/components/schemas/ExamPlanLimits"
+      required: [plans, limits]
+
+    ExamPlanDetail:
+      type: object
+      properties:
+        plan:
+          $ref: "#/components/schemas/ExamPlanSummary"
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExamPlanDay"
+      required: [plan, days]
+
+    CreateExamPlanInput:
+      type: object
+      properties:
+        batch:
+          type: string
+          enum: [gcse, a-level, ssc, hsc]
+        subjects:
+          type: array
+          items:
+            type: string
+        examDate:
+          type: string
+          format: date
+        weakTopics:
+          type: array
+          items:
+            type: string
+        title:
+          type: string
+      required: [batch, subjects, examDate]
+
+    RegenerateExamPlanInput:
+      type: object
+      properties:
+        adjustment:
+          type: string
+          description: Optional instruction, e.g. "more time on Physics"
+
+    UpdateExamPlanDayInput:
+      type: object
+      properties:
+        completed:
+          type: boolean
+      required: [completed]
+
+    AssistantLimits:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: [free, premium, owner]
+        dailyLimit:
+          oneOf:
+            - type: integer
+            - type: "null"
+          description: Free daily question limit; null = unlimited
+        remaining:
+          oneOf:
+            - type: integer
+            - type: "null"
+          description: Questions left today; null = unlimited
+      required: [plan, dailyLimit, remaining]
+
+    AssistantConversationSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, title, updatedAt]
+
+    AssistantOverview:
+      type: object
+      properties:
+        limits:
+          $ref: "#/components/schemas/AssistantLimits"
+        conversations:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssistantConversationSummary"
+      required: [limits, conversations]
+
+    AssistantMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, role, content, createdAt]
+
+    AssistantConversationDetail:
+      type: object
+      properties:
+        conversation:
+          $ref: "#/components/schemas/AssistantConversationSummary"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssistantMessage"
+      required: [conversation, messages]
+
+    FocusLimits:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: [free, premium, owner]
+        maxMinutes:
+          type: integer
+        strictAllowed:
+          type: boolean
+        historyAllowed:
+          type: boolean
+      required: [plan, maxMinutes, strictAllowed, historyAllowed]
+
+    FocusSessionItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        plannedMinutes:
+          type: integer
+        focusedSeconds:
+          type: integer
+        distractions:
+          type: integer
+        score:
+          type: integer
+        strict:
+          type: boolean
+        failed:
+          type: boolean
+        completedAt:
+          type: string
+          format: date-time
+      required: [id, plannedMinutes, focusedSeconds, distractions, score, strict, failed, completedAt]
+
+    FocusStats:
+      type: object
+      properties:
+        totalSessions:
+          type: integer
+        totalFocusedMinutes:
+          type: integer
+        avgScore:
+          type: integer
+        streak:
+          type: integer
+        bestStreak:
+          type: integer
+      required: [totalSessions, totalFocusedMinutes, avgScore, streak, bestStreak]
+
+    FocusOverview:
+      type: object
+      properties:
+        limits:
+          $ref: "#/components/schemas/FocusLimits"
+        todaySessions:
+          type: integer
+        stats:
+          oneOf:
+            - $ref: "#/components/schemas/FocusStats"
+            - type: "null"
+          description: Full stats; null for free accounts (Premium feature)
+        sessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/FocusSessionItem"
+          description: Session history; empty for free accounts (Premium feature)
+      required: [limits, todaySessions, stats, sessions]
+
+    SaveFocusSessionInput:
+      type: object
+      properties:
+        plannedMinutes:
+          type: integer
+        focusedSeconds:
+          type: integer
+        distractions:
+          type: integer
+        strict:
+          type: boolean
+      required: [plannedMinutes, focusedSeconds, distractions]
+
+    ExamPlanDayUpdateResult:
+      type: object
+      properties:
+        day:
+          $ref: "#/components/schemas/ExamPlanDay"
+        dayCount:
+          type: integer
+        completedDayCount:
+          type: integer
+      required: [day, dayCount, completedDayCount]
+
+    LanguageCompleteInput:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [vocab, grammar, sentence, translate]
+        correct:
+          type: boolean
+        word:
+          type: string
+        meaning:
+          type: string
+        meaningBangla:
+          type: string
+        example:
+          type: string
+        language:
+          type: string
+          enum: [English, Spanish, French, Portuguese, German, Arabic, Hindi, Japanese]
+        difficulty:
+          type: string
+          enum: [beginner, intermediate, advanced]
+      required: [type, correct]
+
+    LanguageLevelSuggestion:
+      type: object
+      description: Suggests moving up or down a difficulty level based on recent accuracy.
+      properties:
+        direction:
+          type: string
+          enum: [up, down]
+        suggested:
+          type: string
+          enum: [beginner, intermediate, advanced]
+        accuracy:
+          type: number
+          description: Fraction correct over the recent answer window (0-1).
+        sampleSize:
+          type: integer
+          description: Number of recent answers considered.
+      required: [direction, suggested, accuracy, sampleSize]
+
+    LanguageProgressResult:
+      type: object
+      properties:
+        streak:
+          type: integer
+        bestStreak:
+          type: integer
+        exercisesCompleted:
+          type: integer
+        correctAnswers:
+          type: integer
+        wordsLearned:
+          type: integer
+        levelSuggestion:
+          oneOf:
+            - $ref: "#/components/schemas/LanguageLevelSuggestion"
+            - type: "null"
+      required: [streak, bestStreak, exercisesCompleted, correctAnswers, wordsLearned]
+
+    PaymentInput:
+      type: object
+      properties:
+        trxId:
+          type: string
+        senderNumber:
+          type: string
+      required:
+        - trxId
+        - senderNumber
+
+    SmartNotesInput:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [generate, summarize, solve]
+        topic:
+          type: string
+        content:
+          type: string
+        subject:
+          type: string
+      required:
+        - mode
+
+    SmartNotesResult:
+      type: object
+      properties:
+        result:
+          type: string
+      required:
+        - result
+
+    ImportantQuestionsInput:
+      type: object
+      properties:
+        subject:
+          type: string
+        examType:
+          type: string
+        count:
+          type: integer
+      required:
+        - subject
+
+    ImportantQuestion:
+      type: object
+      properties:
+        question:
+          type: string
+        answer:
+          type: string
+        explanation:
+          type: string
+      required:
+        - question
+        - answer
+        - explanation
+
+    ImportantQuestionsResult:
+      type: object
+      properties:
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImportantQuestion"
+      required:
+        - questions
+
+    AdminLoginInput:
+      type: object
+      properties:
+        password:
+          type: string
+      required:
+        - password
+
+    AdminSession:
+      type: object
+      properties:
+        token:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+      required:
+        - token
+        - expiresAt
+
+    AdminSessionCheck:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required:
+        - ok
+
+    AdminPayment:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        userName:
+          type: ["string", "null"]
+        userEmail:
+          type: ["string", "null"]
+        trxId:
+          type: string
+        senderNumber:
+          type: string
+        amount:
+          type: integer
+        plan:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        reviewNote:
+          type: ["string", "null"]
+        reviewedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - trxId
+        - senderNumber
+        - amount
+        - plan
+        - status
+        - createdAt
+
+    AdminUser:
+      type: object
+      properties:
+        userId:
+          type: string
+        name:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        isPremium:
+          type: boolean
+        premiumExpiresAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - userId
+        - isPremium
+        - createdAt
+
+    AdminStats:
+      type: object
+      properties:
+        totalEarnings:
+          type: integer
+          description: Sum of approved payment amounts (Tk), all-time
+        monthEarnings:
+          type: integer
+          description: Sum of approved payment amounts (Tk) this calendar month
+        pendingPayments:
+          type: integer
+          description: Number of payments awaiting review
+        activePremiumStudents:
+          type: integer
+          description: Users whose premium has not expired
+      required:
+        - totalEarnings
+        - monthEarnings
+        - pendingPayments
+        - activePremiumStudents
+
+    AdminRejectInput:
+      type: object
+      properties:
+        note:
+          type: string
+
+    AdminSettings:
+      type: object
+      properties:
+        bkashNumber:
+          type: string
+        price:
+          type: integer
+        days:
+          type: integer
+      required:
+        - bkashNumber
+        - price
+        - days
+
+    AdminPremiumInput:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [grant, revoke]
+        days:
+          type: integer
+      required:
+        - action

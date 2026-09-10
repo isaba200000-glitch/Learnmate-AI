@@ -1,0 +1,34 @@
+modules = ["nodejs-24", "python-base-3.13", "postgresql-16"]
+
+[deployment]
+router = "application"
+deploymentTarget = "autoscale"
+
+[deployment.postBuild]
+args = ["pnpm", "store", "prune"]
+env = { "CI" = "true" }
+
+[workflows]
+runButton = "Project"
+
+[agent]
+stack = "PNPM_WORKSPACE"
+expertMode = true
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+WHOP_COMPANY_ID = "biz_yFfUX9qIsIykZa"
+WHOP_PLAN_ID = "plan_7pm6CbDDXj1wD"
+WHOP_YEARLY_PLAN_ID = "plan_MbsxOSGeXFHNs"
+VAPID_PUBLIC_KEY = "BCUjrfdOhtT6jUvzZ4HFtvdKwWB7E5SpuWdrsWeaZiqI5bPQeKPTKrbmy4Irxu86cc2i3zIzT9Q363PojbE4TWI"
+VAPID_SUBJECT = "mailto:admin@learnmate.app"
+VITE_VAPID_PUBLIC_KEY = "BCUjrfdOhtT6jUvzZ4HFtvdKwWB7E5SpuWdrsWeaZiqI5bPQeKPTKrbmy4Irxu86cc2i3zIzT9Q363PojbE4TWI"
+
+[nix]
+channel = "stable-25_05"
+packages = ["eas-cli"]

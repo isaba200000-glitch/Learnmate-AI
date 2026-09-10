@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "PV5tt7FpgLa7l_HU3utrZ"
+uri = "file://artifacts/learnmate/public/app-icon-1024.png"
+type = "image"
+title = "LearnMate AI — App Icon 1024×1024"

@@ -1,0 +1,327 @@
+You can use the following master prompt with AI app builders such as Base44, Claude, or Rork. It is written as a product requirements document (PRD) so the AI has clear instructions.
+MASTER PROMPT
+You are an expert product manager, UX designer, software architect, and senior full-stack engineer.
+Design and build a production-ready AI education platform called LearnMate AI.
+The goal is to create the world's best AI-powered learning application that combines tutoring, homework help, exam preparation, language learning, and study planning into one modern application.
+The design should be clean, premium, and comparable in quality to Duolingo, Notion, ChatGPT, and Khan Academy.
+Vision
+Build an all-in-one AI learning platform where students can:
+Learn any subject
+Ask unlimited questions
+Prepare for exams
+Learn languages
+Generate notes
+Upload PDFs
+Solve homework
+Create flashcards
+Practice quizzes
+Track progress
+Study with AI
+The experience should feel like having a personal teacher available 24/7.
+Target Users
+High school students
+University students
+Professionals
+Language learners
+Exam candidates
+Teachers
+Platforms
+Build responsive applications for:
+Web
+Android
+iPhone
+Authentication
+Support
+Email
+Google
+Apple
+Profile includes
+Name
+Photo
+Country
+Education level
+Subjects
+Goals
+Learning language
+Dashboard
+Display
+Welcome message
+Daily streak
+XP
+Study time
+Today's tasks
+Recent lessons
+Upcoming exams
+Progress charts
+Recommended lessons
+Continue learning button
+AI Tutor button
+Homework button
+Exam Prep button
+Language Learning button
+Study Planner button
+AI Tutor
+Allow students to
+Type questions
+Speak questions
+Upload images
+Upload PDFs
+AI should
+Explain simply
+Explain in detail
+Provide examples
+Create practice questions
+Create quizzes
+Generate flashcards
+Summarize topics
+Change explanation level
+Elementary
+Middle school
+High school
+University
+Professional
+Homework Solver
+Students upload
+Images
+PDFs
+Documents
+AI should
+Solve step-by-step
+Explain every step
+Highlight mistakes
+Generate similar exercises
+Offer hints instead of answers if requested
+Exam Preparation
+Support
+SAT
+ACT
+IELTS
+TOEFL
+GRE
+GMAT
+WAEC
+JAMB
+NEET
+UPSC
+GCSE
+A-Level
+IB
+University exams
+Features
+Mock exams
+AI explanations
+Study plans
+Daily revision
+Timed tests
+Score reports
+Weak topic analysis
+Language Learning
+Support
+English
+Spanish
+French
+German
+Portuguese
+Arabic
+Chinese
+Japanese
+Italian
+Features
+Vocabulary
+Grammar
+Listening
+Speaking
+Pronunciation scoring
+Conversation practice
+Roleplay
+Daily lessons
+Progress tracking
+PDF Learning
+Upload books
+Lecture notes
+Research papers
+AI generates
+Summary
+Key concepts
+Flashcards
+Mind maps
+Quizzes
+Glossary
+Important formulas
+Notes
+Create notes
+Edit notes
+AI rewrite
+Simplify
+Expand
+Translate
+Convert into flashcards
+Flashcards
+Generate automatically
+Manual creation
+Spaced repetition
+Difficulty levels
+Bookmark
+Favorites
+Quizzes
+AI generated
+Multiple choice
+True/False
+Short answer
+Essay
+Instant grading
+Detailed explanations
+Study Planner
+Students enter
+Exam dates
+Subjects
+Study hours
+Goals
+AI generates
+Daily plan
+Weekly plan
+Monthly plan
+Revision reminders
+Smart rescheduling
+Voice AI
+Students speak naturally.
+The AI responds with realistic speech.
+Support multiple accents.
+Progress Dashboard
+Display
+Learning streak
+XP
+Achievements
+Study time
+Completion rate
+Quiz performance
+Weak areas
+Strong areas
+Daily goals
+Weekly goals
+Monthly reports
+Gamification
+XP
+Levels
+Coins
+Badges
+Achievements
+Leaderboards
+Challenges
+Daily rewards
+Weekly rewards
+Monthly competitions
+Notifications
+Daily reminders
+Revision reminders
+Exam countdown
+Achievement unlocked
+Study streak
+Language lesson reminder
+Search
+Global search
+Subjects
+Lessons
+Notes
+PDFs
+Quizzes
+Flashcards
+AI Features
+Use OpenAI APIs for
+Tutoring
+Homework
+Question answering
+Flashcards
+Quiz generation
+Summaries
+Translations
+Language conversations
+Writing assistance
+Admin Dashboard
+Manage users
+Manage subscriptions
+View analytics
+Manage content
+View AI usage
+Support tickets
+Announcements
+System settings
+Monetization
+Free Plan
+Limited AI chats
+Basic quizzes
+Limited PDF uploads
+Premium Plan
+Unlimited AI
+Unlimited uploads
+Voice Tutor
+Advanced Exam Prep
+Language Learning
+Offline Mode
+Priority AI
+Family Plan
+School Plan
+University Plan
+UI Style
+Premium
+Minimal
+Apple inspired
+Glassmorphism
+Rounded cards
+Smooth animations
+Dark mode
+Light mode
+Beautiful typography
+Responsive design
+Accessibility support
+Technical Requirements
+Frontend
+Flutter
+Backend
+Firebase
+Firestore
+Firebase Authentication
+Cloud Functions
+Cloud Storage
+OpenAI API
+Stripe payments
+Push notifications
+Analytics
+Crash reporting
+Offline caching
+Security
+JWT authentication
+Role-based access
+Encrypted data
+GDPR compliance
+Rate limiting
+API protection
+Secure file uploads
+Performance
+Fast loading
+Lazy loading
+Caching
+Image optimization
+Offline support
+Pagination
+Scalable architecture
+Deliverables
+Generate:
+Complete application architecture.
+Database schema.
+Firebase collections.
+API structure.
+Folder structure.
+UI/UX design system.
+Every screen.
+Reusable components.
+Authentication flow.
+Admin panel.
+AI integrations.
+Payment integration.
+Complete source code.
+Deployment instructions.
+Testing strategy.
+Documentation.
+Production-ready application.
+Write clean, maintainable, scalable code following best practices. Ensure the app is responsive, accessible, secure, and optimized for performance. Build each feature completely rather than leaving placeholders, and document any external API keys or services that need to be configured.

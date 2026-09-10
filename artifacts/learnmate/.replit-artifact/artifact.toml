@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "LearnMate AI"
+version = "1.0.0"
+id = "artifacts/learnmate"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23477
+
+[services.development]
+run = "pnpm --filter @workspace/learnmate run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/learnmate", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/learnmate/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23477"
+BASE_PATH = "/"

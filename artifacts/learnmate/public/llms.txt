@@ -1,0 +1,23 @@
+# Learnova AI
+
+> Learnova AI is an all-in-one study platform for students in Bangladesh. It offers AI-generated study plans, note-taking, flashcards, an AI study assistant chat, English language practice with Bangla explanations, focus mode, and progress tracking. Free accounts include daily limits; Premium unlocks higher limits and extra features.
+
+## Main sections
+
+- [Home](/): Overview of features and how Learnova works
+- [Sign up](/sign-up): Create a free student account
+- [Sign in](/sign-in): Access your account
+
+## Key features
+
+- AI Study Plans: personalized daily study schedules by class level (NCTB curriculum aware)
+- AI Study Assistant: chat with an AI tutor in English or Bangla
+- English Practice: vocabulary and grammar exercises with Bangla explanations (10 min/day free, 30 min/day Premium)
+- Focus Mode: distraction-free study timer with focus scoring
+- Notes & Flashcards: create and review study materials
+- Progress Tracking: streaks, stats, and study history
+
+## Plans
+
+- Free: core features with daily limits
+- Premium: higher limits, unlimited AI assistant, strict focus mode, 30 min/day English practice

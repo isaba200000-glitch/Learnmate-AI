@@ -1,0 +1,9 @@
+- [LearnMate AI Architecture](learnmate-arch.md) — full-stack AI education platform; key decisions on auth, DB, AI, routing, and the owner-account bypass
+- [Testing-subagent env overrides](testing-env-overrides.md) — workflow env overrides can silently fail; require a startup log breadcrumb before trusting a red run
+- [Focus distraction detection](focus-distraction-detection.md) — screen-off must not count but app-switch must; blur-only heuristic fails on phones, use recent-touch-before-hidden
+- [Mobile timer throttling](mobile-timer-throttling.md) — never count setInterval ticks for durations on phones; use Date.now() anchors + visibilitychange resync; also Radix ScrollArea can't be overflow-constrained via classes
+- [Whop card payments](whop-card-payments.md) — grant only after server-side verify in one transaction; redirect URL from env not headers; fixed $5.99 Whop plan
+- [Clerk Bearer token in custom fetch helpers](clerk-bearer-token-pattern.md) — custom fetch wrappers need `Authorization: Bearer` via `getAuthToken()`; cookies alone → 401
+- [Hosted frontend API paths](hosted-frontend-api-paths.md) — generated clients already include `/api`; external API base URLs must be origin-only to avoid `/api/api` 404s
+- [Image generation timeouts](image-generation-timeouts.md) — image AI is slower and needs bounded waits plus visible retry errors separate from text AI
+- [Groq as free OpenAI replacement](groq-migration.md) — Render uses Groq (gsk_ key + OPENAI_BASE_URL); image generation (visualize) is broken with Groq
