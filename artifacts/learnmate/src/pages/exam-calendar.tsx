@@ -139,7 +139,6 @@ function ExamCalendarPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isPremium, isOwner } = usePremium();
-
  const canUseRoutineGenerator = isOwner || isPremium;
   // Calendar navigation
   const [currentMonth, setCurrentMonth] = useState(new Date());
