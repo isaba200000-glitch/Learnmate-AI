@@ -730,11 +730,11 @@ function ExamCalendarPage() {
             <div className="flex-1">
               <h3 className="font-semibold">AI Routine Generator</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Upgrade to Plus to unlock personalised AI study routines
+                Premium access required for personalised AI study routines
               </p>
             </div>
             <Button asChild className="rounded-full shrink-0" variant="outline">
-              <Link href="/premium">Upgrade to Plus</Link>
+              <Link href="/premium">Get Premium</Link>
             </Button>
           </CardContent>
         </Card>
