@@ -138,10 +138,9 @@ function countdown(examDate: string): string {
 function ExamCalendarPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { subscription, isOwner } = usePremium();
+  const { isPremium, isOwner } = usePremium();
 
-  const isPlus = isOwner || (subscription as any)?.planTier === "yearly";
-
+ const canUseRoutineGenerator = isOwner || isPremium;
   // Calendar navigation
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
@@ -643,7 +642,7 @@ function ExamCalendarPage() {
       </div>
 
       {/* AI Routine Generator */}
-      {isPlus ? (
+      {canUseRoutineGenerator ? (
         <Card className="glass-card border-border/50">
           <CardContent className="p-6 sm:p-8 space-y-4">
             <div className="flex items-center gap-3">
