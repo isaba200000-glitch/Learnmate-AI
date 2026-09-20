@@ -3,7 +3,16 @@ import { Play, Pause, RotateCcw, Volume2, VolumeX, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import {
+  STRICT_MAX_DISTRACTIONS,
+  watchForDistractions,
+} from "@/lib/distraction-watch";
 import { FocusModeCard } from "@/components/focus/focus-mode-card";
+import {
+  useSaveFocusSession,
+  getGetFocusOverviewQueryKey,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { MotionFade } from "@/components/motion";
 
@@ -254,13 +263,50 @@ export default function FocusStudioPage() {
   const [totalXP,      setTotalXP]      = useState(0);
 
   const [strikes, setStrikes] = useState(0);
-  const MAX_STRIKES = 3;
+  // Keep the client threshold in lockstep with the server's failure rule.
+  const MAX_STRIKES = STRICT_MAX_DISTRACTIONS;
   const runningRef = useRef(false);
   const modeRef = useRef<Mode>("focus");
   const strikesRef = useRef(0);
+  const durationsRef = useRef(durations);
+  const secondsLeftRef = useRef(secondsLeft);
+
+  // Persist finished focus sessions so they count towards streaks/stats and
+  // so the server applies the same `distractions >= 3` failure rule. This page
+  // previously recorded nothing at all, so a failed session left no trace.
+  const saveSession = useSaveFocusSession();
+  const queryClient = useQueryClient();
+  const recordSession = useCallback(
+    (distractions: number) => {
+      const plannedMinutes = durationsRef.current.focus;
+      const elapsed = Math.round(
+        plannedMinutes * 60 - Math.max(0, secondsLeftRef.current),
+      );
+      const focusedSeconds = Math.min(
+        plannedMinutes * 60,
+        Math.max(0, elapsed),
+      );
+      saveSession.mutate(
+        { data: { plannedMinutes, focusedSeconds, distractions, strict: true } },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: getGetFocusOverviewQueryKey() });
+          },
+          // A failed save must never block the UI — the session already ended.
+          onError: () => {},
+        },
+      );
+    },
+    [queryClient, saveSession],
+  );
+  const recordSessionRef = useRef(recordSession);
+  recordSessionRef.current = recordSession;
+
   useEffect(() => { runningRef.current = running; }, [running]);
   useEffect(() => { modeRef.current = mode; }, [mode]);
   useEffect(() => { strikesRef.current = strikes; }, [strikes]);
+  useEffect(() => { durationsRef.current = durations; }, [durations]);
+  useEffect(() => { secondsLeftRef.current = secondsLeft; }, [secondsLeft]);
 
   const [sounds, setSounds] = useState<Record<SoundId, { on: boolean; vol: number }>>({
     coffee:      { on: false, vol: 0.5 },
@@ -276,38 +322,47 @@ export default function FocusStudioPage() {
   }, []);
 
   // ── Distraction watcher ──────────────────────────────────────────────────
+  // Uses the shared detector so this page enforces the 3-strike rule exactly
+  // like the fullscreen Focus Mode overlay. Previously this page had no `blur`
+  // listener at all and required a touch within 3s of the hide, so desktop
+  // tab/window switches and most phone app switches (edge-swipe home, recents,
+  // notification taps — none of which deliver a touch event) were never
+  // counted. That is the "3 strikes does not work" bug.
+  //
+  // Strikes only accrue while a FOCUS session is actually running; breaks and
+  // a paused timer are free.
   useEffect(() => {
-    let lastInteraction = 0;
-    const isPhone = window.matchMedia?.("(pointer: coarse)").matches ?? false;
-    const noteInteraction = () => { lastInteraction = Date.now(); };
-    const onHide = () => {
-      if (!document.hidden) return;
-      if (!runningRef.current || modeRef.current !== "focus") return;
-      if (isPhone && Date.now() - lastInteraction >= 3000) return;
-      const next = strikesRef.current + 1;
-      strikesRef.current = next;
-      setStrikes(next);
-      if (next >= MAX_STRIKES) {
-        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-        setRunning(false);
-        setSecondsLeft(durations.focus * 60);
-        engineRef.current?.playBeep();
-        toast({ title: "❌ Session failed", description: `You left the app ${MAX_STRIKES} times. Start a new focus session!`, variant: "destructive" });
-      } else {
-        toast({ title: `⚠️ Distraction! Strike ${next} of ${MAX_STRIKES}`, description: `You left the app. ${MAX_STRIKES - next} more and this session fails.`, variant: "destructive" });
-      }
-    };
-    window.addEventListener("pointerdown", noteInteraction, true);
-    window.addEventListener("touchstart", noteInteraction, { capture: true, passive: true });
-    window.addEventListener("keydown", noteInteraction, true);
-    document.addEventListener("visibilitychange", onHide);
-    return () => {
-      window.removeEventListener("pointerdown", noteInteraction, true);
-      window.removeEventListener("touchstart", noteInteraction, true);
-      window.removeEventListener("keydown", noteInteraction, true);
-      document.removeEventListener("visibilitychange", onHide);
-    };
-  }, [durations.focus, toast]);
+    return watchForDistractions({
+      isActive: () => runningRef.current && modeRef.current === "focus",
+      onDistracted: () => {
+        const next = strikesRef.current + 1;
+        strikesRef.current = next;
+        setStrikes(next);
+        if (next >= MAX_STRIKES) {
+          if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+          // Flip the ref synchronously too: the resync handler can run before
+          // React re-renders, and it must see the session as already stopped.
+          runningRef.current = false;
+          setRunning(false);
+          // Record BEFORE resetting the clock so focusedSeconds is accurate.
+          recordSessionRef.current(next);
+          setSecondsLeft(durationsRef.current.focus * 60);
+          engineRef.current?.playBeep();
+          toast({
+            title: "❌ Session failed",
+            description: `You left the app ${MAX_STRIKES} times. Start a new focus session!`,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: `⚠️ Distraction! Strike ${next} of ${MAX_STRIKES}`,
+            description: `You left the app. ${MAX_STRIKES - next} more and this session fails.`,
+            variant: "destructive",
+          });
+        }
+      },
+    });
+  }, [toast]);
 
   const switchMode = useCallback((m: Mode) => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -322,6 +377,10 @@ export default function FocusStudioPage() {
     let done = false;
     const update = () => {
       if (done) return;
+      // The session can be stopped mid-tick (e.g. failed on the 3rd strike).
+      // Without this guard the visibilitychange resync below would recompute
+      // and overwrite the reset clock, leaving a stale countdown on screen.
+      if (!runningRef.current) return;
       const remaining = Math.max(0, Math.ceil((endAtRef.current - Date.now()) / 1000));
       setSecondsLeft(remaining);
       if (remaining <= 0) {
@@ -337,6 +396,7 @@ export default function FocusStudioPage() {
         if (mode === "focus") {
           setSessionsDone(c => c + 1);
           setTotalXP(t => t + 50);
+          recordSessionRef.current(strikesRef.current);
           setStrikes(0); strikesRef.current = 0;
           toast({ title: "Focus session complete! 🍅", description: "+50 XP earned. Time for a break." });
         } else {
@@ -412,7 +472,7 @@ export default function FocusStudioPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Focus Studio</h1>
-          <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Pomodoro timer &amp; ambient soundscapes</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Pomodoro timer & ambient soundscapes</p>
         </div>
       </div>
 
@@ -471,7 +531,7 @@ export default function FocusStudioPage() {
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
-              <span className="text-5xl sm:text-6xl font-bold tracking-tighter tabular-nums font-mono">{timeStr}</span>
+              <span className="text-5xl sm:text-6xl font-bold tracking-tighter tabular-nums font-mono" data-testid="text-studio-timer">{timeStr}</span>
               <span className="text-xs text-muted-foreground mt-1.5 uppercase tracking-wider font-medium">{cfg.description}</span>
               {mode === "focus" && secondsLeft < totalSec && (
                 <span className="text-xs text-muted-foreground mt-1" data-testid="text-studio-studied-so-far">
@@ -500,6 +560,7 @@ export default function FocusStudioPage() {
               whileTap={{ scale: 0.94 }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
               onClick={handleStartPause}
+              data-testid="button-start-pause"
               className="flex items-center gap-2 rounded-full px-10 h-14 text-base font-bold text-white shadow-lg"
               style={{ backgroundColor: cfg.hex, boxShadow: `0 0 24px ${cfg.hex}50` }}
             >
@@ -513,7 +574,7 @@ export default function FocusStudioPage() {
           {/* Distraction strikes */}
           {mode === "focus" && (
             <div className="flex flex-col items-center gap-1.5">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5" data-testid="strikes-hearts" data-strikes={strikes}>
                 {Array.from({ length: MAX_STRIKES }).map((_, i) => (
                   <span
                     key={i}

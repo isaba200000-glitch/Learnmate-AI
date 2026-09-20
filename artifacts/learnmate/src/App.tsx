@@ -24,6 +24,7 @@ const PlannerPage = lazy(() => import("./pages/planner"));
 const DocumentsPage = lazy(() => import("./pages/documents"));
 const ProgressPage = lazy(() => import("./pages/progress"));
 const ExamPrepPage = lazy(() => import("./pages/exam-prep"));
+const ExamDetailPage = lazy(() => import("./pages/exam-detail"));
 const LanguagePage = lazy(() => import("./pages/language"));
 const ExamPlannerPage = lazy(() => import("./pages/exam-planner"));
 const AssistantPage = lazy(() => import("./pages/assistant"));
@@ -330,6 +331,7 @@ function App() {
                 <Route path="/planner" component={() => <ProtectedRoute component={PlannerPage} />} />
                 <Route path="/documents" component={() => <ProtectedRoute component={DocumentsPage} />} />
                 <Route path="/progress" component={() => <ProtectedRoute component={ProgressPage} />} />
+                <Route path="/exam-prep/:examId" component={() => <ProtectedRoute component={ExamDetailPage} />} />
                 <Route path="/exam-prep" component={() => <ProtectedRoute component={ExamPrepPage} />} />
                 <Route path="/language" component={() => <ProtectedRoute component={LanguagePage} />} />
                 <Route path="/exam-planner" component={() => <ProtectedRoute component={ExamPlannerPage} />} />

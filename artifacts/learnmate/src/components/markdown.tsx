@@ -7,6 +7,78 @@ import { cn } from "@/lib/utils";
 // Optimized for premium chat UI: tight spacing, primary-tinted bullets,
 // monospaced code, zebra-striped tables.
 
+// Named/numeric HTML entities that language models routinely emit in what is
+// supposed to be plain markdown. Because this renderer outputs React text
+// nodes (never dangerouslySetInnerHTML), anything left encoded would be shown
+// to the student verbatim as "Rise &amp; shine".
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ",
+  mdash: "—", ndash: "–", hellip: "…", rsquo: "’", lsquo: "‘",
+  rdquo: "”", ldquo: "“", times: "×", divide: "÷", deg: "°",
+  plusmn: "±", le: "≤", ge: "≥", ne: "≠", rarr: "→", larr: "←",
+  middot: "·", bull: "•", trade: "™", copy: "©", reg: "®", euro: "€",
+  pound: "£", frac12: "½", frac14: "¼", frac34: "¾", sup2: "²", sup3: "³",
+};
+
+function decodeEntities(text: string): string {
+  return text.replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]*);/g, (whole, body: string) => {
+    if (body[0] === "#") {
+      const code = body[1] === "x" || body[1] === "X"
+        ? Number.parseInt(body.slice(2), 16)
+        : Number.parseInt(body.slice(1), 10);
+      if (Number.isFinite(code) && code > 0 && code <= 0x10ffff) {
+        try {
+          return String.fromCodePoint(code);
+        } catch {
+          return whole;
+        }
+      }
+      return whole;
+    }
+    const named = NAMED_ENTITIES[body.toLowerCase()];
+    return named ?? whole;
+  });
+}
+
+/**
+ * Clean up AI-generated markdown before parsing.
+ *
+ * Models frequently slip raw HTML into markdown output — most often `<br>` /
+ * `<br/>` for line breaks, sometimes `<p>`, `<div>`, `<b>` or `<span>`
+ * wrappers. This renderer intentionally never uses dangerouslySetInnerHTML, so
+ * those tags used to be printed on screen as literal text. Convert the
+ * meaningful ones to real markdown and strip the rest.
+ *
+ * Fenced code blocks are preserved exactly — `<br>` inside a code sample is
+ * content the student is meant to read.
+ */
+function normalizeContent(raw: string): string {
+  const segments = raw.replace(/\r\n/g, "\n").split(/(```[\s\S]*?(?:```|$))/g);
+  return segments
+    .map((segment, index) => {
+      // Odd indices are fenced code blocks — leave them byte-for-byte alone.
+      if (index % 2 === 1) return segment;
+      return decodeEntities(
+        segment
+          // <br>, <br/>, <br /> → newline
+          .replace(/<br\s*\/?>/gi, "\n")
+          // Block tags → paragraph breaks
+          .replace(/<\/?(?:p|div|section|article)\s*[^>]*>/gi, "\n")
+          // </li> etc. carry a line break; opening <ul>/<ol> do not
+          .replace(/<\/(?:li|tr|h[1-6])\s*>/gi, "\n")
+          .replace(/<li\s*[^>]*>/gi, "- ")
+          // Inline emphasis → markdown equivalents
+          .replace(/<\/?(?:strong|b)\s*[^>]*>/gi, "**")
+          .replace(/<\/?(?:em|i)\s*[^>]*>/gi, "*")
+          // Anything else HTML-ish that survived: drop the tag, keep the text
+          .replace(/<\/?[a-zA-Z][a-zA-Z0-9-]*(?:\s[^<>]*)?\/?>/g, "")
+          // Collapse the blank-line runs the substitutions can create
+          .replace(/\n{3,}/g, "\n\n"),
+      );
+    })
+    .join("");
+}
+
 function renderInline(text: string, keyPrefix: string): ReactNode[] {
   const nodes: ReactNode[] = [];
   // bold, italic, inline code, autolink
@@ -115,7 +187,7 @@ export function extractOutline(content: string): { level: number; text: string }
 }
 
 export function Markdown({ content, className }: { content: string; className?: string }) {
-  const lines = content.replace(/\r\n/g, "\n").split("\n");
+  const lines = normalizeContent(content).split("\n");
   const blocks: ReactNode[] = [];
   let list: { ordered: boolean; items: string[] } | null = null;
   let code: string[] | null = null;
@@ -216,10 +288,15 @@ export function Markdown({ content, className }: { content: string; className?: 
           : level === 2
             ? "mb-2 mt-4 text-lg font-bold tracking-tight border-b border-border/30 pb-1.5"
             : "mb-1.5 mt-3 text-base font-semibold text-primary";
+      // Use real heading elements so screen readers and in-page navigation get
+      // a proper document outline. Tailwind's preflight strips native heading
+      // styling, so the rendered result is visually identical to the previous
+      // <p> markup.
+      const Tag = (`h${Math.min(level, 6)}`) as "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
       blocks.push(
-        <p key={key++} className={cls}>
+        <Tag key={key++} className={cls}>
           {renderInline(heading[2], `h${key}`)}
-        </p>,
+        </Tag>,
       );
       continue;
     }

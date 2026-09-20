@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { QuizQuestion } from './quizQuestion';
+import type { QuizSessionWithQuestionsSource } from './quizSessionWithQuestionsSource';
 import type { QuizSessionWithQuestionsStatus } from './quizSessionWithQuestionsStatus';
 
 export interface QuizSessionWithQuestions {
@@ -19,7 +20,13 @@ export interface QuizSessionWithQuestions {
   correctAnswers: number | null;
   /** @nullable */
   score: number | null;
+  source?: QuizSessionWithQuestionsSource;
   status: QuizSessionWithQuestionsStatus;
+  /**
+     * The photographed page (data URL) for source = "photo" sessions, otherwise null.
+     * @nullable
+     */
+  imageUrl?: string | null;
   createdAt: Date;
   /** @nullable */
   completedAt: Date | null;

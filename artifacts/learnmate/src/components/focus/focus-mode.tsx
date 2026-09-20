@@ -17,10 +17,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import {
+  STRICT_MAX_DISTRACTIONS,
+  watchForDistractions,
+} from "@/lib/distraction-watch";
 import { AlertTriangle, CheckCircle2, Flag, ShieldAlert, X } from "lucide-react";
 
 // Strict mode fails a session after this many distractions (matches server).
-export const STRICT_MAX_DISTRACTIONS = 3;
+// Re-exported so existing imports from this module keep working.
+export { STRICT_MAX_DISTRACTIONS };
 
 export interface FocusOptions {
   minutes: number;
@@ -150,66 +155,25 @@ export function FocusModeProvider({ children }: { children: ReactNode }) {
   }, [phase]);
 
   // Distraction detection: leaving the app / tab counts — ALWAYS, for everyone.
-  // Screen-off does NOT count. Heuristic: leaving the app on a phone always
-  // requires touching the screen (home gesture, recents, notification tap)
-  // right before the page goes hidden, while the power button / screen timeout
-  // is hardware — no touch. So: hidden + recent interaction = app switch;
-  // hidden with no recent interaction = screen off (allowed).
-  // (The old blur-only heuristic failed because many mobile browsers never
-  // fire blur on app switch — pointer/touch events are far more reliable.)
+  // Screen-off does NOT count. The full heuristic (and why the earlier
+  // touch-only version missed real app switches) lives in
+  // `@/lib/distraction-watch`, shared with the Focus Studio page so both
+  // surfaces enforce the 3-strike rule identically.
   useEffect(() => {
     if (phase !== "running") return;
-    let lastHit = 0;
-    let lastInteraction = 0;
-    const isPhone = window.matchMedia?.("(pointer: coarse)").matches ?? false;
-    const noteInteraction = () => { lastInteraction = Date.now(); };
-    const onDistracted = () => {
-      const s = stateRef.current;
-      if (s.phase !== "running") return;
-      // visibilitychange + blur often fire together — count once per 2s.
-      const now = Date.now();
-      if (now - lastHit < 2000) return;
-      lastHit = now;
-      setDistractions((d) => {
-        const next = d + 1;
-        if (next >= STRICT_MAX_DISTRACTIONS) {
-          setTimeout(() => finishRef.current(true), 0);
-        }
-        return next;
-      });
-      setWarning(true);
-    };
-    const onBlur = () => {
-      // NOTE: blur must NOT count as a "user interaction" — some phone
-      // browsers fire blur right before screen-off's visibilitychange, which
-      // would make screen-off look like an app switch and cause a false strike.
-      // Desktop: clicking into another window keeps the page visible — count it.
-      setTimeout(() => {
-        if (document.visibilityState === "visible") onDistracted();
-      }, 300);
-    };
-    const onVisibility = () => {
-      if (document.visibilityState !== "hidden") return;
-      if (isPhone) {
-        // Phone: only count if the student touched the screen just before —
-        // that's an app switch. Screen off (power button/timeout) has no touch.
-        if (Date.now() - lastInteraction < 3000) onDistracted();
-      } else {
-        onDistracted();
-      }
-    };
-    window.addEventListener("blur", onBlur);
-    window.addEventListener("pointerdown", noteInteraction, true);
-    window.addEventListener("touchstart", noteInteraction, { capture: true, passive: true });
-    window.addEventListener("keydown", noteInteraction, true);
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      window.removeEventListener("blur", onBlur);
-      window.removeEventListener("pointerdown", noteInteraction, true);
-      window.removeEventListener("touchstart", noteInteraction, true);
-      window.removeEventListener("keydown", noteInteraction, true);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
+    return watchForDistractions({
+      isActive: () => stateRef.current.phase === "running",
+      onDistracted: () => {
+        setDistractions((d) => {
+          const next = d + 1;
+          if (next >= STRICT_MAX_DISTRACTIONS) {
+            setTimeout(() => finishRef.current(true), 0);
+          }
+          return next;
+        });
+        setWarning(true);
+      },
+    });
   }, [phase]);
 
   const startFocus = useCallback(

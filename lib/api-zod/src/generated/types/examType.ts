@@ -5,10 +5,26 @@
  * LearnMate AI API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ExamSection } from './examSection';
+import type { ExamTopic } from './examTopic';
 
 export interface ExamType {
   id: string;
   name: string;
   category: string;
   description: string;
+  fullName?: string;
+  /** How the exam is delivered (digital adaptive, paper, etc). */
+  format?: string;
+  totalTime?: string;
+  totalQuestions?: string;
+  scoring?: string;
+  sections?: ExamSection[];
+  topics?: ExamTopic[];
+  keyFacts?: string[];
+  studyTips?: string[];
+  validity?: string;
+  officialSite?: string;
+  /** ISO date the seed facts were last checked against sources. */
+  lastVerified?: string;
 }

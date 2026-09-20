@@ -32,11 +32,14 @@ import type {
   ApiError,
   AssistantConversationDetail,
   AssistantOverview,
+  AvailablePlans,
   CreateExamPlanInput,
   DashboardSummary,
   Document,
   DocumentInput,
   DocumentWithDetails,
+  ExamDeepDive,
+  ExamDeepDiveRequest,
   ExamPlanDayUpdateResult,
   ExamPlanDetail,
   ExamPlanList,
@@ -2800,6 +2803,154 @@ export function useListExamTypes<TData = Awaited<ReturnType<typeof listExamTypes
 
 
 
+export const getGetExamTypeUrl = (examId: string,) => {
+
+
+
+
+  return `/api/exam-types/${examId}`
+}
+
+/**
+ * @summary Get full detail for one exam type
+ */
+export const getExamType = async (examId: string, options?: RequestInit): Promise<ExamType> => {
+
+  return customFetch<ExamType>(getGetExamTypeUrl(examId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetExamTypeQueryKey = (examId: string,) => {
+    return [
+    `/api/exam-types/${examId}`
+    ] as const;
+    }
+
+
+export const getGetExamTypeQueryOptions = <TData = Awaited<ReturnType<typeof getExamType>>, TError = ErrorType<ApiError>>(examId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExamType>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetExamTypeQueryKey(examId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getExamType>>> = ({ signal }) => getExamType(examId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: examId !== null && examId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getExamType>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetExamTypeQueryResult = NonNullable<Awaited<ReturnType<typeof getExamType>>>
+export type GetExamTypeQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary Get full detail for one exam type
+ */
+
+export function useGetExamType<TData = Awaited<ReturnType<typeof getExamType>>, TError = ErrorType<ApiError>>(
+ examId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExamType>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetExamTypeQueryOptions(examId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGenerateExamDeepDiveUrl = () => {
+
+
+
+
+  return `/api/exam-types/deep-dive`
+}
+
+/**
+ * @summary Premium AI deep dive for an exam, grounded in verified exam facts
+ */
+export const generateExamDeepDive = async (examDeepDiveRequest: ExamDeepDiveRequest, options?: RequestInit): Promise<ExamDeepDive> => {
+
+  return customFetch<ExamDeepDive>(getGenerateExamDeepDiveUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(examDeepDiveRequest)
+  }
+);}
+
+
+
+
+
+export const getGenerateExamDeepDiveMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateExamDeepDive>>, TError,{data: BodyType<ExamDeepDiveRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateExamDeepDive>>, TError,{data: BodyType<ExamDeepDiveRequest>}, TContext> => {
+
+const mutationKey = ['generateExamDeepDive'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateExamDeepDive>>, {data: BodyType<ExamDeepDiveRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  generateExamDeepDive(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateExamDeepDiveMutationResult = NonNullable<Awaited<ReturnType<typeof generateExamDeepDive>>>
+    export type GenerateExamDeepDiveMutationBody = BodyType<ExamDeepDiveRequest>
+    export type GenerateExamDeepDiveMutationError = ErrorType<ApiError>
+
+    /**
+ * @summary Premium AI deep dive for an exam, grounded in verified exam facts
+ */
+export const useGenerateExamDeepDive = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateExamDeepDive>>, TError,{data: BodyType<ExamDeepDiveRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateExamDeepDive>>,
+        TError,
+        {data: BodyType<ExamDeepDiveRequest>},
+        TContext
+      > => {
+      return useMutation(getGenerateExamDeepDiveMutationOptions(options));
+    }
+
 export const getListOpenaiConversationsUrl = () => {
 
 
@@ -3244,6 +3395,86 @@ export const useSendOpenaiMessage = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getSendOpenaiMessageMutationOptions(options));
     }
+
+export const getGetAvailablePlansUrl = () => {
+
+
+
+
+  return `/api/premium/available-plans`
+}
+
+/**
+ * Returns which plans the frontend should show. When `yearly.available` is
+ * false, the yearly tier card should be hidden — the yearly checkout
+ * endpoint will return 503 if called anyway.
+ * @summary List payment tiers currently configured on the server
+ */
+export const getAvailablePlans = async ( options?: RequestInit): Promise<AvailablePlans> => {
+
+  return customFetch<AvailablePlans>(getGetAvailablePlansUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAvailablePlansQueryKey = () => {
+    return [
+    `/api/premium/available-plans`
+    ] as const;
+    }
+
+
+export const getGetAvailablePlansQueryOptions = <TData = Awaited<ReturnType<typeof getAvailablePlans>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAvailablePlans>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAvailablePlansQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAvailablePlans>>> = ({ signal }) => getAvailablePlans({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAvailablePlans>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAvailablePlansQueryResult = NonNullable<Awaited<ReturnType<typeof getAvailablePlans>>>
+export type GetAvailablePlansQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List payment tiers currently configured on the server
+ */
+
+export function useGetAvailablePlans<TData = Awaited<ReturnType<typeof getAvailablePlans>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAvailablePlans>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAvailablePlansQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetSubscriptionUrl = () => {
 

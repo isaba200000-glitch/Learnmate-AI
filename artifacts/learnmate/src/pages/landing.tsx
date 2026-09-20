@@ -256,7 +256,7 @@ export default function LandingPage() {
                     <div className="min-w-0">
                       <h3 className="text-2xl font-bold tracking-tight">Mohammed Isaba Islam</h3>
                       <p className="text-primary font-medium text-sm sm:text-base">Founder — Learnova AI</p>
-                      <p className="text-brand-deep font-medium text-sm">CEO &amp; Co-Founder — RoboKids Academy</p>
+                      <p className="text-brand-deep font-medium text-sm">CEO & Co-Founder — RoboKids Academy</p>
                     </div>
                   </div>
 
@@ -302,7 +302,7 @@ export default function LandingPage() {
                       <div>
                         <p className="font-semibold text-amber-700">🥇 Gold Medal — International Round</p>
                         <p className="text-sm text-muted-foreground mt-0.5">
-                          BYSIS (Bangladesh Youth Young Scientist &amp; Innovator Society)
+                          BYSIS (Bangladesh Youth Young Scientist & Innovator Society)
                           — International Competition, <span className="text-foreground font-medium">Malaysia</span>
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">Representing Bangladesh on the international stage</p>
@@ -314,7 +314,7 @@ export default function LandingPage() {
                       <div>
                         <p className="font-semibold text-slate-600">🥈 Silver Medal — National Round</p>
                         <p className="text-sm text-muted-foreground mt-0.5">
-                          BYSIS — Bangladesh Youth Young Scientist &amp; Innovator Society
+                          BYSIS — Bangladesh Youth Young Scientist & Innovator Society
                           — <span className="text-foreground font-medium">National Round, Bangladesh</span>
                         </p>
                       </div>
@@ -474,7 +474,7 @@ export default function LandingPage() {
             <p className="text-sm text-muted-foreground">
               &copy; {new Date().getFullYear()} Learnova AI. Built by Mohammed Isaba Islam. All rights reserved.
             </p>
-            <p className="text-xs text-muted-foreground">CEO &amp; Co-Founder · RoboKids Academy</p>
+            <p className="text-xs text-muted-foreground">CEO & Co-Founder · RoboKids Academy</p>
           </div>
         </div>
       </footer>

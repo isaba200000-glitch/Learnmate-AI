@@ -200,7 +200,7 @@ export default function ExamPlannerPage() {
             <CalendarClock className="h-6 w-6 text-primary" /> Exam Planner
           </h1>
           <p className="text-sm text-muted-foreground">
-            AI-built day-by-day study plans for GCSE, A Level, SSC &amp; HSC
+            AI-built day-by-day study plans for GCSE, A Level, SSC & HSC
           </p>
         </div>
         <div className="flex items-center gap-2">

@@ -42,6 +42,7 @@ export const GetDashboardResponse = zod.object({
   "score": zod.number().nullable(),
   "source": zod.enum(['manual', 'photo']).optional(),
   "status": zod.enum(['pending', 'completed']),
+  "imageUrl": zod.string().nullish().describe('The photographed page (data URL) for source = \"photo\" sessions.\nPersisted so the student can review the original material\nalongside the AI-generated questions. null for manual quizzes\nand for photo quizzes whose image was larger than the 1.5 MB\npersistence ceiling.\n'),
   "createdAt": zod.coerce.date(),
   "completedAt": zod.coerce.date().nullable()
 })),
@@ -417,6 +418,7 @@ export const ListQuizSessionsResponseItem = zod.object({
   "score": zod.number().nullable(),
   "source": zod.enum(['manual', 'photo']).optional(),
   "status": zod.enum(['pending', 'completed']),
+  "imageUrl": zod.string().nullish().describe('The photographed page (data URL) for source = \"photo\" sessions.\nPersisted so the student can review the original material\nalongside the AI-generated questions. null for manual quizzes\nand for photo quizzes whose image was larger than the 1.5 MB\npersistence ceiling.\n'),
   "createdAt": zod.coerce.date(),
   "completedAt": zod.coerce.date().nullable()
 })
@@ -441,7 +443,9 @@ export const CreateQuizSessionResponse = zod.object({
   "totalQuestions": zod.number(),
   "correctAnswers": zod.number().nullable(),
   "score": zod.number().nullable(),
+  "source": zod.enum(['manual', 'photo']).optional(),
   "status": zod.enum(['pending', 'completed']),
+  "imageUrl": zod.string().nullish().describe('The photographed page (data URL) for source = \"photo\" sessions, otherwise null.'),
   "createdAt": zod.coerce.date(),
   "completedAt": zod.coerce.date().nullable(),
   "questions": zod.array(zod.object({
@@ -475,7 +479,9 @@ export const CreateQuizFromPhotoResponse = zod.object({
   "totalQuestions": zod.number(),
   "correctAnswers": zod.number().nullable(),
   "score": zod.number().nullable(),
+  "source": zod.enum(['manual', 'photo']).optional(),
   "status": zod.enum(['pending', 'completed']),
+  "imageUrl": zod.string().nullish().describe('The photographed page (data URL) for source = \"photo\" sessions, otherwise null.'),
   "createdAt": zod.coerce.date(),
   "completedAt": zod.coerce.date().nullable(),
   "questions": zod.array(zod.object({
@@ -507,7 +513,9 @@ export const GetQuizSessionResponse = zod.object({
   "totalQuestions": zod.number(),
   "correctAnswers": zod.number().nullable(),
   "score": zod.number().nullable(),
+  "source": zod.enum(['manual', 'photo']).optional(),
   "status": zod.enum(['pending', 'completed']),
+  "imageUrl": zod.string().nullish().describe('The photographed page (data URL) for source = \"photo\" sessions, otherwise null.'),
   "createdAt": zod.coerce.date(),
   "completedAt": zod.coerce.date().nullable(),
   "questions": zod.array(zod.object({
@@ -844,9 +852,88 @@ export const ListExamTypesResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "category": zod.string(),
-  "description": zod.string()
+  "description": zod.string(),
+  "fullName": zod.string().optional(),
+  "format": zod.string().optional().describe('How the exam is delivered (digital adaptive, paper, etc).'),
+  "totalTime": zod.string().optional(),
+  "totalQuestions": zod.string().optional(),
+  "scoring": zod.string().optional(),
+  "sections": zod.array(zod.object({
+  "name": zod.string(),
+  "questions": zod.string().optional().describe('Question count as free text (e.g. \"54\" or \"40 (optional)\").'),
+  "minutes": zod.string().optional().describe('Time allowed as free text (e.g. \"64\" or \"2 x 32\").'),
+  "detail": zod.string().optional()
+})).optional(),
+  "topics": zod.array(zod.object({
+  "area": zod.string(),
+  "weight": zod.string().optional().describe('Share of the exam, when published (e.g. \"28%\").'),
+  "items": zod.array(zod.string())
+})).optional(),
+  "keyFacts": zod.array(zod.string()).optional(),
+  "studyTips": zod.array(zod.string()).optional(),
+  "validity": zod.string().optional(),
+  "officialSite": zod.string().optional(),
+  "lastVerified": zod.string().optional().describe('ISO date the seed facts were last checked against sources.')
 })
 export const ListExamTypesResponse = zod.array(ListExamTypesResponseItem)
+
+
+/**
+ * @summary Get full detail for one exam type
+ */
+export const GetExamTypeParams = zod.object({
+  "examId": zod.coerce.string()
+})
+
+export const GetExamTypeResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "category": zod.string(),
+  "description": zod.string(),
+  "fullName": zod.string().optional(),
+  "format": zod.string().optional().describe('How the exam is delivered (digital adaptive, paper, etc).'),
+  "totalTime": zod.string().optional(),
+  "totalQuestions": zod.string().optional(),
+  "scoring": zod.string().optional(),
+  "sections": zod.array(zod.object({
+  "name": zod.string(),
+  "questions": zod.string().optional().describe('Question count as free text (e.g. \"54\" or \"40 (optional)\").'),
+  "minutes": zod.string().optional().describe('Time allowed as free text (e.g. \"64\" or \"2 x 32\").'),
+  "detail": zod.string().optional()
+})).optional(),
+  "topics": zod.array(zod.object({
+  "area": zod.string(),
+  "weight": zod.string().optional().describe('Share of the exam, when published (e.g. \"28%\").'),
+  "items": zod.array(zod.string())
+})).optional(),
+  "keyFacts": zod.array(zod.string()).optional(),
+  "studyTips": zod.array(zod.string()).optional(),
+  "validity": zod.string().optional(),
+  "officialSite": zod.string().optional(),
+  "lastVerified": zod.string().optional().describe('ISO date the seed facts were last checked against sources.')
+})
+
+
+/**
+ * @summary Premium AI deep dive for an exam, grounded in verified exam facts
+ */
+export const GenerateExamDeepDiveBody = zod.object({
+  "examId": zod.string(),
+  "focus": zod.string().optional().describe('Optional sub-topic to concentrate the plan on.')
+})
+
+export const GenerateExamDeepDiveResponse = zod.object({
+  "examId": zod.string(),
+  "examName": zod.string(),
+  "summary": zod.string(),
+  "sections": zod.array(zod.object({
+  "heading": zod.string(),
+  "body": zod.string()
+})),
+  "highYieldTopics": zod.array(zod.string()).optional(),
+  "commonMistakes": zod.array(zod.string()).optional(),
+  "sources": zod.array(zod.string()).optional()
+})
 
 
 /**
@@ -948,6 +1035,22 @@ export const SendOpenaiMessageBody = zod.object({
 })
 
 export const SendOpenaiMessageResponse = zod.unknown()
+
+
+/**
+ * Returns which plans the frontend should show. When `yearly.available` is
+ * false, the yearly tier card should be hidden — the yearly checkout
+ * endpoint will return 503 if called anyway.
+ * @summary List payment tiers currently configured on the server
+ */
+export const GetAvailablePlansResponse = zod.object({
+  "monthly": zod.object({
+  "available": zod.boolean()
+}),
+  "yearly": zod.object({
+  "available": zod.boolean()
+})
+})
 
 
 /**

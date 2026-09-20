@@ -21,6 +21,15 @@ export interface QuizSession {
   score: number | null;
   source?: QuizSessionSource;
   status: QuizSessionStatus;
+  /**
+     * The photographed page (data URL) for source = "photo" sessions.
+     * Persisted so the student can review the original material
+     * alongside the AI-generated questions. null for manual quizzes
+     * and for photo quizzes whose image was larger than the 1.5 MB
+     * persistence ceiling.
+     * @nullable
+     */
+  imageUrl?: string | null;
   createdAt: Date;
   /** @nullable */
   completedAt: Date | null;

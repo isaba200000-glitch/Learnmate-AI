@@ -177,7 +177,7 @@ export default function QuizzesPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Quizzes</h1>
-            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Test your knowledge &amp; earn XP</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Test your knowledge & earn XP</p>
           </div>
         </div>
 
@@ -276,7 +276,7 @@ export default function QuizzesPage() {
                 className={`inline-flex h-10 items-center rounded-full bg-white text-blue-600 font-semibold px-5 text-sm shadow-sm transition-opacity ${photoQuiz.isPending ? "opacity-60" : "hover:opacity-90"}`}
                 data-testid="button-photo-quiz"
               >
-                {photoQuiz.isPending ? "Reading photo…" : <><Camera className="mr-2 h-4 w-4" /> Snap &amp; Quiz</>}
+                {photoQuiz.isPending ? "Reading photo…" : <><Camera className="mr-2 h-4 w-4" /> Snap & Quiz</>}
               </span>
             </label>
           ) : (

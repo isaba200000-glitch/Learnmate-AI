@@ -1,12 +1,13 @@
 /**
- * Focus Mode 3-strike rule — automated UI verification (Task: confirm the
- * strike system fails a session on phones too).
+ * Focus Mode 3-strike rule — automated UI verification.
  *
  * Phone path: `(pointer: coarse)` matches, so a `visibilitychange -> hidden`
- * only counts as a distraction when a touch/pointer interaction happened
- * within the previous 3s (app switch). Hidden with no recent interaction is
- * "screen off" and must NOT count.
- * Desktop path: every hidden counts.
+ * counts as a distraction when the student interacted with the page shortly
+ * before it (an app switch). Hidden with no recent interaction is "screen off"
+ * and must NOT count. Interaction now includes scrolling/wheel, not just
+ * touch — scroll-then-switch was a real app switch that used to be missed.
+ * Desktop path: every hidden counts, plus window blur (switching to another
+ * application can leave the page "visible").
  */
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -176,6 +177,41 @@ describe("Focus Mode 3-strike rule on phones (coarse pointer)", () => {
     });
   });
 
+  it("counts an app switch after scrolling (no touchstart fired)", () => {
+    // Regression: reading a page fires scroll/wheel, not touchstart. The old
+    // touch-only heuristic ignored these, so scroll-then-switch-app — the most
+    // common real sequence — silently gave no strike.
+    renderFocus();
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+    hideAndReturn();
+    act(() => vi.advanceTimersByTime(2500));
+    expect(screen.getByTestId("banner-distraction-warning").textContent).toContain("1");
+  });
+
+  it("counts an app switch up to 10s after the last interaction", () => {
+    // The old 3s window was too tight: a student who reads for a few seconds
+    // before swiping away produced no strike at all.
+    renderFocus();
+    touchScreen();
+    act(() => vi.advanceTimersByTime(8000));
+    hideAndReturn();
+    act(() => vi.advanceTimersByTime(2500));
+    expect(screen.getByTestId("banner-distraction-warning").textContent).toContain("1");
+  });
+
+  it("still ignores a screen-off long after the student stopped interacting", () => {
+    renderFocus();
+    touchScreen();
+    act(() => vi.advanceTimersByTime(20_000)); // phone sat idle, then went dark
+    hideAndReturn();
+    act(() => vi.advanceTimersByTime(2500));
+    expect(screen.getByTestId("text-distraction-count").textContent).toContain(
+      "Distractions: 0",
+    );
+  });
+
   it("debounces double events (visibilitychange bursts count once per 2s)", () => {
     renderFocus();
     touchScreen();
@@ -204,5 +240,28 @@ describe("Focus Mode 3-strike rule on desktop (fine pointer)", () => {
     expect(screen.getByTestId("card-focus-summary").textContent).toContain("Session failed");
     expect(mutateMock).toHaveBeenCalledTimes(1);
     expect(mutateMock.mock.calls[0][0]).toMatchObject({ data: { distractions: 3 } });
+  });
+
+  it("counts switching to another application (blur with the page still visible)", () => {
+    // Alt-tabbing to another app often leaves the page `visible`, so `hidden`
+    // never fires. Without a blur listener this escape was entirely free —
+    // exactly the hole the Focus Studio page had.
+    renderFocus();
+    act(() => {
+      window.dispatchEvent(new Event("blur"));
+    });
+    act(() => vi.advanceTimersByTime(500));
+    expect(screen.getByTestId("banner-distraction-warning").textContent).toContain("1");
+  });
+
+  it("counts a blur+hide pair only once (no double strike)", () => {
+    renderFocus();
+    act(() => {
+      window.dispatchEvent(new Event("blur"));
+      setVisibility("hidden");
+    });
+    act(() => vi.advanceTimersByTime(1000));
+    act(() => setVisibility("visible"));
+    expect(screen.getByTestId("banner-distraction-warning").textContent).toContain("1");
   });
 });

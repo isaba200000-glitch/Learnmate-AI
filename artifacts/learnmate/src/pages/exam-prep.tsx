@@ -15,9 +15,11 @@ export default function ExamPrepPage() {
     query: { queryKey: getListExamTypesQueryKey() }
   });
 
-  const handleStartPrep = (examName: string) => {
-    // Navigate to quizzes with the exam pre-filled as the quiz topic
-    setLocation(`/quizzes?subject=${encodeURIComponent(examName)}`);
+  // Open the exam's detail page: real format, syllabus topics, study tips and
+  // the premium AI briefing. (It previously jumped straight to a generic quiz,
+  // which skipped all the actual exam information.)
+  const handleStartPrep = (examId: string) => {
+    setLocation(`/exam-prep/${encodeURIComponent(examId)}`);
   };
 
   const groupedExams = exams?.reduce((acc, exam) => {
@@ -94,16 +96,33 @@ export default function ExamPrepPage() {
                       </div>
                       <CardTitle className="text-2xl tracking-tight">{exam.name}</CardTitle>
                     </CardHeader>
-                    <CardContent className="pt-4 flex-1">
+                    <CardContent className="pt-4 flex-1 space-y-3">
                       <CardDescription className="text-sm leading-relaxed">{exam.description}</CardDescription>
+                      {(exam.totalTime || exam.scoring) && (
+                        <dl className="space-y-1 text-xs text-muted-foreground">
+                          {exam.totalTime && (
+                            <div className="flex gap-2">
+                              <dt className="font-medium text-foreground/70 shrink-0">Time:</dt>
+                              <dd>{exam.totalTime}</dd>
+                            </div>
+                          )}
+                          {exam.scoring && (
+                            <div className="flex gap-2">
+                              <dt className="font-medium text-foreground/70 shrink-0">Scored:</dt>
+                              <dd className="line-clamp-2">{exam.scoring}</dd>
+                            </div>
+                          )}
+                        </dl>
+                      )}
                     </CardContent>
                     <div className="p-4 pt-0 mt-auto">
                       <Button 
                         className="w-full justify-between rounded-xl group-hover:bg-primary group-hover:text-primary-foreground" 
                         variant="secondary"
-                        onClick={() => handleStartPrep(exam.name)}
+                        onClick={() => handleStartPrep(exam.id)}
+                        data-testid={`button-start-prep-${exam.id}`}
                       >
-                        Start Prep <ChevronRight className="h-4 w-4 opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                        View exam details <ChevronRight className="h-4 w-4 opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                       </Button>
                     </div>
                   </Card>

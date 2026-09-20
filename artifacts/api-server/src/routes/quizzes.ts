@@ -5,93 +5,16 @@ import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import { openai, PREMIUM_AI_MODEL } from "../lib/openai";
 import { isPremiumActive } from "../lib/premium";
 import { isOwnerRequest } from "../lib/owner";
+import {
+  cleanText,
+  fetchFromOTDB,
+  generateQuestions,
+  getCategory,
+  normalizeDifficulty,
+  type GeneratedQuestion,
+} from "../lib/quiz-generation";
 
 const router: IRouter = Router();
-
-// ─── Open Trivia DB helpers ───────────────────────────────────────────────────
-
-const OTDB_CATEGORY: Record<string, number> = {
-  math: 19, mathematics: 19, algebra: 19, geometry: 19, calculus: 19, arithmetic: 19, statistics: 19,
-  science: 17, biology: 17, chemistry: 17, physics: 17, nature: 17, anatomy: 17,
-  computer: 18, programming: 18, technology: 18, coding: 18,
-  history: 23,
-  geography: 22,
-  literature: 10, english: 10, reading: 10, books: 10,
-  art: 25,
-  music: 12,
-  sports: 21, football: 21, basketball: 21,
-};
-
-function getCategory(subject: string): number {
-  const lower = subject.toLowerCase();
-  for (const [key, id] of Object.entries(OTDB_CATEGORY)) {
-    if (lower.includes(key)) return id;
-  }
-  return 9; // General Knowledge
-}
-
-function decodeHtml(html: string): string {
-  return html
-    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&apos;/g, "'")
-    .replace(/&ldquo;/g, "\u201C").replace(/&rdquo;/g, "\u201D")
-    .replace(/&lsquo;/g, "\u2018").replace(/&rsquo;/g, "\u2019")
-    .replace(/&ndash;/g, "\u2013").replace(/&mdash;/g, "\u2014")
-    .replace(/&hellip;/g, "\u2026").replace(/&eacute;/g, "\u00E9")
-    .replace(/&egrave;/g, "\u00E8").replace(/&agrave;/g, "\u00E0")
-    .replace(/&uuml;/g, "\u00FC").replace(/&ouml;/g, "\u00F6")
-    .replace(/&auml;/g, "\u00E4").replace(/&szlig;/g, "\u00DF")
-    .replace(/&oslash;/g, "\u00F8").replace(/&ntilde;/g, "\u00F1");
-}
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-async function fetchFromOTDB(
-  count: number,
-  categoryId: number,
-  difficulty: string
-): Promise<Array<{ question: string; type: string; options: string[]; correctAnswer: string; explanation: string }>> {
-  const diff = ["easy", "medium", "hard"].includes(difficulty) ? difficulty : "medium";
-  const url = `https://opentdb.com/api.php?amount=${count}&category=${categoryId}&difficulty=${diff}&type=multiple`;
-
-  const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-  if (!res.ok) throw new Error(`OTDB request failed: ${res.status}`);
-  const data = await res.json() as { response_code: number; results?: any[] };
-
-  // response_code 1 = not enough questions for category — fall back to general
-  if (data.response_code === 1 && categoryId !== 9) {
-    const fallbackUrl = `https://opentdb.com/api.php?amount=${count}&category=9&difficulty=${diff}&type=multiple`;
-    const fr = await fetch(fallbackUrl, { signal: AbortSignal.timeout(8000) });
-    const fd = await fr.json() as { response_code: number; results?: any[] };
-    if (fd.response_code === 0 && fd.results) data.results = fd.results;
-    else throw new Error("OTDB returned no results");
-  } else if (data.response_code !== 0 || !data.results?.length) {
-    throw new Error("OTDB returned no results");
-  }
-
-  const LETTERS = ["A", "B", "C", "D"];
-  return data.results!.map((q: any) => {
-    const wrong: string[] = q.incorrect_answers.map(decodeHtml);
-    const correct = decodeHtml(q.correct_answer);
-    const shuffled = shuffle([...wrong, correct]);
-    const options = shuffled.map((a, i) => `${LETTERS[i]}. ${a}`);
-    const correctIdx = shuffled.indexOf(correct);
-    return {
-      question: decodeHtml(q.question),
-      type: "multiple_choice",
-      options,
-      correctAnswer: options[correctIdx],
-      explanation: `Category: ${decodeHtml(q.category)} · Difficulty: ${q.difficulty}`,
-    };
-  });
-}
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
@@ -124,6 +47,21 @@ router.get("/quiz-sessions", requireAuth, async (req, res): Promise<void> => {
   res.json(sessions.map(toSession));
 });
 
+// Premium (and owner) accounts get AI-written quiz questions; free accounts
+// get the Open Trivia DB bank. Mirrors hasUnlimitedPhotoQuizzes below.
+async function hasPremiumQuizAi(
+  req: Parameters<typeof isOwnerRequest>[0],
+  userId: string,
+): Promise<boolean> {
+  if (await isOwnerRequest(req)) return true;
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.userId, userId))
+    .limit(1);
+  return !!user && isPremiumActive(user.premiumExpiresAt);
+}
+
 router.post("/quiz-sessions", requireAuth, async (req, res): Promise<void> => {
   const userId = (req as AuthRequest).userId;
   const { subject, examType, totalQuestions, difficulty } = req.body;
@@ -133,17 +71,38 @@ router.post("/quiz-sessions", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const count = Math.min(Math.max(1, parseInt(String(totalQuestions), 10)), 20);
-  const categoryId = getCategory(String(subject));
+  const parsedCount = parseInt(String(totalQuestions), 10);
+  if (!Number.isFinite(parsedCount) || parsedCount < 1) {
+    res.status(400).json({ error: "totalQuestions must be a positive number" });
+    return;
+  }
+  const count = Math.min(parsedCount, 20);
+  const diff = normalizeDifficulty(difficulty);
 
-  let questions: Array<{ question: string; type: string; options: string[]; correctAnswer: string; explanation: string }> = [];
+  // Tiering: quizzes stay a FREE feature, but the AI-written version is the
+  // premium upgrade. Free students get the Open Trivia DB question bank (the
+  // long-standing behaviour); premium and owner accounts get questions written
+  // for their exact topic, with an explanation that teaches. This also keeps
+  // per-quiz AI cost tied to paying accounts.
+  const aiQuizzes = await hasPremiumQuizAi(req, userId);
 
+  let questions: GeneratedQuestion[] = [];
   try {
-    questions = await fetchFromOTDB(count, categoryId, String(difficulty ?? "medium"));
+    if (aiQuizzes) {
+      ({ questions } = await generateQuestions(
+        String(subject),
+        count,
+        diff,
+        examType ? String(examType) : null,
+        req.log,
+      ));
+    } else {
+      questions = await fetchFromOTDB(count, getCategory(String(subject)), diff);
+    }
   } catch (err) {
-    console.error("[quizzes] OTDB error:", err);
+    req.log?.error({ err }, "quiz generation failed");
     res.status(503).json({
-      error: "Could not fetch quiz questions. Please check your internet connection and try again.",
+      error: "Could not create quiz questions right now. Please try again in a moment.",
     });
     return;
   }
@@ -259,7 +218,9 @@ router.post("/quiz-sessions/from-photo", requireAuth, async (req, res): Promise<
               type: "text",
               text:
                 `Create exactly ${count} ${diff}-difficulty multiple-choice questions from this photo of study material.` +
-                ` Each question has exactly 4 options with only ONE correct, plus a friendly 1-2 sentence explanation of the correct answer.` +
+                ` Each question has exactly 4 options with only ONE correct answer.` +
+                ` For each question give a 2-3 sentence explanation that teaches why the correct answer is right (and, where useful, why a tempting wrong option is wrong).` +
+                ` Use plain text only: no HTML tags, no HTML entities, no markdown.` +
                 ` Also give a short subject/topic name (max 40 chars) describing what the material is about.` +
                 ` Respond as JSON exactly matching: {"subject":"...","questions":[{"question":"...","options":["...","...","...","..."],"correctIndex":0,"explanation":"..."}]}`,
             },
@@ -278,10 +239,10 @@ router.post("/quiz-sessions/from-photo", requireAuth, async (req, res): Promise<
   const rawQuestions = Array.isArray(parsed.questions) ? parsed.questions : [];
   const questions = rawQuestions
     .map((q) => {
-      const question = typeof q?.question === "string" ? q.question.trim().slice(0, 600) : "";
+      const question = typeof q?.question === "string" ? cleanText(q.question).slice(0, 600) : "";
       const optsRaw = Array.isArray(q?.options) ? q.options : [];
       const opts = optsRaw
-        .map((o) => (typeof o === "string" ? o.trim().slice(0, 300) : ""))
+        .map((o) => (typeof o === "string" ? cleanText(o).slice(0, 300) : ""))
         .filter(Boolean)
         .slice(0, 4);
       const idx = Number(q?.correctIndex);
@@ -292,7 +253,7 @@ router.post("/quiz-sessions/from-photo", requireAuth, async (req, res): Promise<
         type: "multiple_choice",
         options,
         correctAnswer: options[idx],
-        explanation: typeof q?.explanation === "string" ? q.explanation.trim().slice(0, 800) : "",
+        explanation: typeof q?.explanation === "string" ? cleanText(q.explanation).slice(0, 800) : "",
       };
     })
     .filter((q): q is NonNullable<typeof q> => q !== null);

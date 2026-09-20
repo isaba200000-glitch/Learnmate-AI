@@ -537,7 +537,7 @@ function PlanSelector({
               <CreditCard className="h-4 w-4 text-primary" /> Pay with card
             </h3>
             <p className="text-xs text-muted-foreground mb-3">
-              Visa, Mastercard &amp; more — instant activation, no waiting.
+              Visa, Mastercard & more — instant activation, no waiting.
             </p>
             <Button
               onClick={isMonthly ? startMonthlyPayment : startYearlyPayment}

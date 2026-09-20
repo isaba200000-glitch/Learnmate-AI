@@ -19,14 +19,17 @@ let selectResultQueue: any[][] = [SELECT_ROWS];
 
 vi.mock("@workspace/db", () => {
   return {
-    db: {
+      db: {
       select: vi.fn().mockImplementation(() => {
         const rows = selectResultQueue.shift() ?? [];
         return {
           from: () => ({
+            // `where(...)` must be awaitable on its own: some queries (e.g.
+            // photoQuizzesUsed) await it directly without .limit()/.orderBy().
             where: () => ({
               limit: () => Promise.resolve(rows),
               orderBy: () => Promise.resolve(rows),
+              then: (resolve: (v: unknown) => unknown) => resolve(rows),
             }),
           }),
         };

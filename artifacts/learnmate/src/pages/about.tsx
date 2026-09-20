@@ -58,7 +58,7 @@ export default function AboutPage() {
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Mohammed Isaba Islam</h2>
             <p className="text-primary font-medium text-sm mt-0.5">Founder — Learnova AI</p>
-            <p className="text-primary/80 font-medium text-sm">CEO &amp; Co-Founder — RoboKids Academy</p>
+            <p className="text-primary/80 font-medium text-sm">CEO & Co-Founder — RoboKids Academy</p>
           </div>
         </div>
 
@@ -109,7 +109,7 @@ export default function AboutPage() {
             <div>
               <p className="font-semibold text-yellow-400">🥇 Gold Medal — International Round</p>
               <p className="text-sm text-muted-foreground mt-0.5">
-                BYSIS (Bangladesh Youth Young Scientist &amp; Innovator Society) —
+                BYSIS (Bangladesh Youth Young Scientist & Innovator Society) —
                 International Competition, <span className="text-foreground font-medium">Malaysia</span>
               </p>
               <p className="text-xs text-muted-foreground mt-1">Representing Bangladesh on the international stage</p>
@@ -121,7 +121,7 @@ export default function AboutPage() {
             <div>
               <p className="font-semibold text-slate-300">🥈 Silver Medal — National Round</p>
               <p className="text-sm text-muted-foreground mt-0.5">
-                BYSIS — Bangladesh Youth Young Scientist &amp; Innovator Society —
+                BYSIS — Bangladesh Youth Young Scientist & Innovator Society —
                 <span className="text-foreground font-medium"> National Round, Bangladesh</span>
               </p>
             </div>

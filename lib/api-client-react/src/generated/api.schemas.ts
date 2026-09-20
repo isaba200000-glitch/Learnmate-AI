@@ -47,6 +47,15 @@ export interface QuizSession {
   score: number | null;
   source?: QuizSessionSource;
   status: QuizSessionStatus;
+  /**
+     * The photographed page (data URL) for source = "photo" sessions.
+     * Persisted so the student can review the original material
+     * alongside the AI-generated questions. null for manual quizzes
+     * and for photo quizzes whose image was larger than the 1.5 MB
+     * persistence ceiling.
+     * @nullable
+     */
+  imageUrl?: string | null;
   createdAt: string;
   /** @nullable */
   completedAt: string | null;
@@ -229,6 +238,14 @@ export interface FlashcardUpdate {
   isBookmarked?: boolean;
 }
 
+export type QuizSessionWithQuestionsSource = typeof QuizSessionWithQuestionsSource[keyof typeof QuizSessionWithQuestionsSource];
+
+
+export const QuizSessionWithQuestionsSource = {
+  manual: 'manual',
+  photo: 'photo',
+} as const;
+
 export type QuizSessionWithQuestionsStatus = typeof QuizSessionWithQuestionsStatus[keyof typeof QuizSessionWithQuestionsStatus];
 
 
@@ -272,7 +289,13 @@ export interface QuizSessionWithQuestions {
   correctAnswers: number | null;
   /** @nullable */
   score: number | null;
+  source?: QuizSessionWithQuestionsSource;
   status: QuizSessionWithQuestionsStatus;
+  /**
+     * The photographed page (data URL) for source = "photo" sessions, otherwise null.
+     * @nullable
+     */
+  imageUrl?: string | null;
   createdAt: string;
   /** @nullable */
   completedAt: string | null;
@@ -477,11 +500,62 @@ export interface ProgressStats {
   recentActivity: ProgressStatsRecentActivityItem[];
 }
 
+export interface ExamSection {
+  name: string;
+  /** Question count as free text (e.g. "54" or "40 (optional)"). */
+  questions?: string;
+  /** Time allowed as free text (e.g. "64" or "2 x 32"). */
+  minutes?: string;
+  detail?: string;
+}
+
+export interface ExamTopic {
+  area: string;
+  /** Share of the exam, when published (e.g. "28%"). */
+  weight?: string;
+  items: string[];
+}
+
 export interface ExamType {
   id: string;
   name: string;
   category: string;
   description: string;
+  fullName?: string;
+  /** How the exam is delivered (digital adaptive, paper, etc). */
+  format?: string;
+  totalTime?: string;
+  totalQuestions?: string;
+  scoring?: string;
+  sections?: ExamSection[];
+  topics?: ExamTopic[];
+  keyFacts?: string[];
+  studyTips?: string[];
+  validity?: string;
+  officialSite?: string;
+  /** ISO date the seed facts were last checked against sources. */
+  lastVerified?: string;
+}
+
+export interface ExamDeepDiveRequest {
+  examId: string;
+  /** Optional sub-topic to concentrate the plan on. */
+  focus?: string;
+}
+
+export interface ExamDeepDiveSection {
+  heading: string;
+  body: string;
+}
+
+export interface ExamDeepDive {
+  examId: string;
+  examName: string;
+  summary: string;
+  sections: ExamDeepDiveSection[];
+  highYieldTopics?: string[];
+  commonMistakes?: string[];
+  sources?: string[];
 }
 
 export interface OpenaiConversation {
@@ -582,6 +656,19 @@ export interface Payment {
   /** @nullable */
   reviewedAt?: string | null;
   createdAt: string;
+}
+
+export type AvailablePlansMonthly = {
+  available: boolean;
+};
+
+export type AvailablePlansYearly = {
+  available: boolean;
+};
+
+export interface AvailablePlans {
+  monthly: AvailablePlansMonthly;
+  yearly: AvailablePlansYearly;
 }
 
 export type SubscriptionInfoStatus = typeof SubscriptionInfoStatus[keyof typeof SubscriptionInfoStatus];

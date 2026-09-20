@@ -137,7 +137,7 @@ export function FocusModeCard() {
             <div className="flex items-center gap-3">
               <Flame className="h-8 w-8 text-primary" />
               <div>
-                <p className="text-sm font-semibold">Focus history &amp; streaks</p>
+                <p className="text-sm font-semibold">Focus history & streaks</p>
                 <p className="text-xs text-muted-foreground">
                   Premium tracks your focus over time: stats, daily streaks and longer sessions.
                 </p>

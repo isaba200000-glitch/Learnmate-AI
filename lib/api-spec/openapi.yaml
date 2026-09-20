@@ -794,6 +794,68 @@ paths:
                 items:
                   $ref: "#/components/schemas/ExamType"
 
+  /exam-types/{examId}:
+    get:
+      operationId: getExamType
+      tags: [exam-types]
+      summary: Get full detail for one exam type
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Exam detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExamType"
+        "404":
+          description: Unknown exam
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /exam-types/deep-dive:
+    post:
+      operationId: generateExamDeepDive
+      tags: [exam-types]
+      summary: Premium AI deep dive for an exam, grounded in verified exam facts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExamDeepDiveRequest"
+      responses:
+        "200":
+          description: Generated study briefing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExamDeepDive"
+        "403":
+          description: Premium subscription required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Unknown exam
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "502":
+          description: AI provider failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /openai/conversations:
     get:
       operationId: listOpenaiConversations
@@ -2545,6 +2607,38 @@ components:
         - icon
         - earnedAt
 
+    ExamSection:
+      type: object
+      properties:
+        name:
+          type: string
+        questions:
+          type: string
+          description: Question count as free text (e.g. "54" or "40 (optional)").
+        minutes:
+          type: string
+          description: Time allowed as free text (e.g. "64" or "2 x 32").
+        detail:
+          type: string
+      required:
+        - name
+
+    ExamTopic:
+      type: object
+      properties:
+        area:
+          type: string
+        weight:
+          type: string
+          description: Share of the exam, when published (e.g. "28%").
+        items:
+          type: array
+          items:
+            type: string
+      required:
+        - area
+        - items
+
     ExamType:
       type: object
       properties:
@@ -2556,11 +2650,98 @@ components:
           type: string
         description:
           type: string
+        fullName:
+          type: string
+        format:
+          type: string
+          description: How the exam is delivered (digital adaptive, paper, etc).
+        totalTime:
+          type: string
+        totalQuestions:
+          type: string
+        scoring:
+          type: string
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExamSection"
+        topics:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExamTopic"
+        keyFacts:
+          type: array
+          items:
+            type: string
+        studyTips:
+          type: array
+          items:
+            type: string
+        validity:
+          type: string
+        officialSite:
+          type: string
+        lastVerified:
+          type: string
+          description: ISO date the seed facts were last checked against sources.
       required:
         - id
         - name
         - category
         - description
+
+    ExamDeepDiveRequest:
+      type: object
+      properties:
+        examId:
+          type: string
+        focus:
+          type: string
+          description: Optional sub-topic to concentrate the plan on.
+      required:
+        - examId
+
+    ExamDeepDiveSection:
+      type: object
+      properties:
+        heading:
+          type: string
+        body:
+          type: string
+      required:
+        - heading
+        - body
+
+    ExamDeepDive:
+      type: object
+      properties:
+        examId:
+          type: string
+        examName:
+          type: string
+        summary:
+          type: string
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExamDeepDiveSection"
+        highYieldTopics:
+          type: array
+          items:
+            type: string
+        commonMistakes:
+          type: array
+          items:
+            type: string
+        sources:
+          type: array
+          items:
+            type: string
+      required:
+        - examId
+        - examName
+        - summary
+        - sections
 
     OpenaiConversation:
       type: object
