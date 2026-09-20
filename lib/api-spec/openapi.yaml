@@ -2994,6 +2994,19 @@ components:
           type: integer
         practicedToday:
           type: boolean
+        xp:
+          type: integer
+          description: Lifetime XP earned from practice and daily challenges
+        level:
+          type: integer
+        xpIntoLevel:
+          type: integer
+        xpForNextLevel:
+          type: integer
+        dailyChallenge:
+          oneOf:
+            - $ref: "#/components/schemas/LanguageDailyChallenge"
+            - type: "null"
         recentWords:
           type: array
           items:
@@ -3012,6 +3025,25 @@ components:
         - wordsLearned
         - practicedToday
         - recentWords
+
+    LanguageDailyChallenge:
+      type: object
+      description: Today's Duolingo-style goal; refreshes every day (Asia/Dhaka)
+      properties:
+        kind:
+          type: string
+          enum: [exercises, correct, words]
+        description:
+          type: string
+        target:
+          type: integer
+        progress:
+          type: integer
+        completed:
+          type: boolean
+        xpReward:
+          type: integer
+      required: [kind, description, target, progress, completed, xpReward]
 
     LanguageTickResult:
       type: object
@@ -3037,7 +3069,7 @@ components:
       properties:
         mode:
           type: string
-          enum: [vocab, grammar, sentence, translate]
+          enum: [vocab, grammar, sentence, translate, listen, match]
         difficulty:
           type: string
           enum: [beginner, intermediate, advanced]
@@ -3051,7 +3083,7 @@ components:
       properties:
         type:
           type: string
-          enum: [vocab, grammar, sentence, translate]
+          enum: [vocab, grammar, sentence, translate, listen, match]
         sentence:
           type: string
         word:
@@ -3080,6 +3112,11 @@ components:
           type: string
         glossary:
           type: array
+          items:
+            $ref: "#/components/schemas/WordGloss"
+        pairs:
+          type: array
+          description: Term/meaning pairs for a "match" exercise
           items:
             $ref: "#/components/schemas/WordGloss"
       required: [type]
@@ -3442,7 +3479,7 @@ components:
       properties:
         type:
           type: string
-          enum: [vocab, grammar, sentence, translate]
+          enum: [vocab, grammar, sentence, translate, listen, match]
         correct:
           type: boolean
         word:
@@ -3496,6 +3533,22 @@ components:
           oneOf:
             - $ref: "#/components/schemas/LanguageLevelSuggestion"
             - type: "null"
+        xpAwarded:
+          type: integer
+        xp:
+          type: integer
+        level:
+          type: integer
+        xpIntoLevel:
+          type: integer
+        xpForNextLevel:
+          type: integer
+        dailyChallenge:
+          oneOf:
+            - $ref: "#/components/schemas/LanguageDailyChallenge"
+            - type: "null"
+        challengeCompleted:
+          type: boolean
       required: [streak, bestStreak, exercisesCompleted, correctAnswers, wordsLearned]
 
     PaymentInput:

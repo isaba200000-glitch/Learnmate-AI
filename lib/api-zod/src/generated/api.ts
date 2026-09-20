@@ -1167,6 +1167,18 @@ export const GetLanguageOverviewResponse = zod.object({
   "correctAnswers": zod.number(),
   "wordsLearned": zod.number(),
   "practicedToday": zod.boolean(),
+  "xp": zod.number().optional().describe('Lifetime XP earned from practice and daily challenges'),
+  "level": zod.number().optional(),
+  "xpIntoLevel": zod.number().optional(),
+  "xpForNextLevel": zod.number().optional(),
+  "dailyChallenge": zod.union([zod.object({
+  "kind": zod.enum(['exercises', 'correct', 'words']),
+  "description": zod.string(),
+  "target": zod.number(),
+  "progress": zod.number(),
+  "completed": zod.boolean(),
+  "xpReward": zod.number()
+}).describe('Today\'s Duolingo-style goal; refreshes every day (Asia\/Dhaka)'),zod.null()]).optional(),
   "recentWords": zod.array(zod.object({
   "word": zod.string(),
   "meaning": zod.string(),
@@ -1193,14 +1205,14 @@ export const LanguageTickResponse = zod.object({
  * @summary Generate a batch of AI language exercises
  */
 export const GenerateLanguageExercisesBody = zod.object({
-  "mode": zod.enum(['vocab', 'grammar', 'sentence', 'translate']),
+  "mode": zod.enum(['vocab', 'grammar', 'sentence', 'translate', 'listen', 'match']),
   "difficulty": zod.enum(['beginner', 'intermediate', 'advanced']).optional(),
   "language": zod.enum(['English', 'Spanish', 'French', 'Portuguese', 'German', 'Arabic', 'Hindi', 'Japanese']).optional()
 })
 
 export const GenerateLanguageExercisesResponse = zod.object({
   "exercises": zod.array(zod.object({
-  "type": zod.enum(['vocab', 'grammar', 'sentence', 'translate']),
+  "type": zod.enum(['vocab', 'grammar', 'sentence', 'translate', 'listen', 'match']),
   "sentence": zod.string().optional(),
   "word": zod.string().optional(),
   "question": zod.string().optional(),
@@ -1216,7 +1228,11 @@ export const GenerateLanguageExercisesResponse = zod.object({
   "glossary": zod.array(zod.object({
   "term": zod.string(),
   "english": zod.string()
-})).optional()
+})).optional(),
+  "pairs": zod.array(zod.object({
+  "term": zod.string(),
+  "english": zod.string()
+})).optional().describe('Term\/meaning pairs for a \"match\" exercise')
 }))
 })
 
@@ -1257,7 +1273,7 @@ export const GradeLanguageTranslationResponse = zod.object({
  * @summary Record a finished exercise (streak, counters, learned words)
  */
 export const CompleteLanguageExerciseBody = zod.object({
-  "type": zod.enum(['vocab', 'grammar', 'sentence', 'translate']),
+  "type": zod.enum(['vocab', 'grammar', 'sentence', 'translate', 'listen', 'match']),
   "correct": zod.boolean(),
   "word": zod.string().optional(),
   "meaning": zod.string().optional(),
@@ -1278,7 +1294,21 @@ export const CompleteLanguageExerciseResponse = zod.object({
   "suggested": zod.enum(['beginner', 'intermediate', 'advanced']),
   "accuracy": zod.number().describe('Fraction correct over the recent answer window (0-1).'),
   "sampleSize": zod.number().describe('Number of recent answers considered.')
-}).describe('Suggests moving up or down a difficulty level based on recent accuracy.'),zod.null()]).optional()
+}).describe('Suggests moving up or down a difficulty level based on recent accuracy.'),zod.null()]).optional(),
+  "xpAwarded": zod.number().optional(),
+  "xp": zod.number().optional(),
+  "level": zod.number().optional(),
+  "xpIntoLevel": zod.number().optional(),
+  "xpForNextLevel": zod.number().optional(),
+  "dailyChallenge": zod.union([zod.object({
+  "kind": zod.enum(['exercises', 'correct', 'words']),
+  "description": zod.string(),
+  "target": zod.number(),
+  "progress": zod.number(),
+  "completed": zod.boolean(),
+  "xpReward": zod.number()
+}).describe('Today\'s Duolingo-style goal; refreshes every day (Asia\/Dhaka)'),zod.null()]).optional(),
+  "challengeCompleted": zod.boolean().optional()
 })
 
 

@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -12,6 +12,7 @@ import {
   type LanguageExercise,
   type GradeSentenceResult,
   type LanguageProgressResult,
+  type LanguageOverview,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,9 +40,15 @@ import {
   Sparkles,
   X,
   BookOpen,
+  Volume2,
+  Turtle,
+  Headphones,
+  Shuffle,
+  Target,
+  Zap,
 } from "lucide-react";
 
-type Mode = "vocab" | "grammar" | "sentence" | "translate";
+type Mode = "vocab" | "grammar" | "sentence" | "translate" | "listen" | "match";
 type Difficulty = "beginner" | "intermediate" | "advanced";
 type TargetLanguage =
   | "English"
@@ -111,6 +118,20 @@ const MODE_META: {
     desc: "Read a sentence in the language you're learning and translate it into English.",
     icon: Languages,
     iconClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  },
+  {
+    mode: "listen",
+    title: "Listening",
+    desc: "Hear a sentence read aloud and type exactly what you heard.",
+    icon: Headphones,
+    iconClass: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+  },
+  {
+    mode: "match",
+    title: "Match the Pairs",
+    desc: "Tap each word and its meaning to clear the board — quick daily revision.",
+    icon: Shuffle,
+    iconClass: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
   },
 ];
 
@@ -671,6 +692,429 @@ function TranslateExercise({
   );
 }
 
+// ─── Listening ("type what you hear") ────────────────────────────────────────
+
+// Maps our language names onto BCP-47 tags for speech synthesis. Without a
+// matching voice the browser reads the sentence with the page's default voice,
+// which sounds wrong — so we pick the closest locale we can.
+const SPEECH_LOCALES: Record<TargetLanguage, string> = {
+  English: "en-US",
+  Spanish: "es-ES",
+  French: "fr-FR",
+  Portuguese: "pt-BR",
+  German: "de-DE",
+  Arabic: "ar-SA",
+  Hindi: "hi-IN",
+  Japanese: "ja-JP",
+  Chinese: "zh-CN",
+  Korean: "ko-KR",
+  Turkish: "tr-TR",
+  Italian: "it-IT",
+};
+
+export function speechSupported(): boolean {
+  return typeof window !== "undefined" && "speechSynthesis" in window;
+}
+
+/**
+ * Normalise for comparison: case, Latin accents, punctuation and spacing are
+ * all ignored, because none of them are what the listening drill is testing.
+ *
+ * Only Latin combining accents (U+0300-U+036F) are stripped, and the string is
+ * recomposed afterwards: marks in other scripts change the actual sound, so
+ * removing them would be wrong. Japanese "で" decomposes to "て" + dakuten, and
+ * Hindi matras are separate combining marks — both must survive.
+ */
+export function normalizeHeard(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .normalize("NFC")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\p{M}\s]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function ListenExercise({
+  exercise,
+  language,
+  onAnswered,
+  onNext,
+  isLast,
+}: {
+  exercise: LanguageExercise;
+  language: TargetLanguage;
+  onAnswered: (correct: boolean) => void;
+  onNext: () => void;
+  isLast: boolean;
+}) {
+  const target = exercise.sentence ?? "";
+  const [answer, setAnswer] = useState("");
+  const [result, setResult] = useState<"correct" | "wrong" | null>(null);
+  const supported = speechSupported();
+
+  const speak = useCallback(
+    (rate: number) => {
+      if (!supported || !target) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(target);
+      utterance.lang = SPEECH_LOCALES[language] ?? "en-US";
+      utterance.rate = rate;
+      window.speechSynthesis.speak(utterance);
+    },
+    [supported, target, language],
+  );
+
+  // Play once automatically when the exercise appears, and stop any audio when
+  // the student moves on (otherwise the voice keeps talking over the next one).
+  useEffect(() => {
+    speak(0.9);
+    return () => {
+      if (supported) window.speechSynthesis.cancel();
+    };
+  }, [speak, supported]);
+
+  const submit = () => {
+    if (result || !answer.trim()) return;
+    const correct = normalizeHeard(answer) === normalizeHeard(target);
+    setResult(correct ? "correct" : "wrong");
+    onAnswered(correct);
+  };
+
+  return (
+    <div className="space-y-4" data-testid="exercise-listen">
+      <div>
+        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Type what you hear
+        </p>
+        {!supported ? (
+          <p className="text-sm text-muted-foreground" data-testid="text-speech-unsupported">
+            Your browser can't play audio for this exercise. Here's the sentence instead:{" "}
+            <span className="font-medium text-foreground">{target}</span>
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Listen carefully and write the sentence in {language}.
+          </p>
+        )}
+      </div>
+
+      {supported && (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => speak(0.9)}
+            className="rounded-full"
+            data-testid="button-play-audio"
+          >
+            <Volume2 className="mr-1.5 h-4 w-4" /> Play again
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => speak(0.55)}
+            className="rounded-full"
+            data-testid="button-play-slow"
+          >
+            <Turtle className="mr-1.5 h-4 w-4" /> Slower
+          </Button>
+        </div>
+      )}
+
+      <textarea
+        value={answer}
+        onChange={(e) => setAnswer(e.target.value)}
+        placeholder={`Write what you heard in ${language}…`}
+        rows={2}
+        disabled={!!result}
+        className="w-full resize-none rounded-xl border border-input bg-background px-4 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
+        data-testid="input-listen-answer"
+      />
+
+      {!result ? (
+        <Button
+          onClick={submit}
+          disabled={!answer.trim()}
+          className="rounded-full"
+          data-testid="button-check-listen"
+        >
+          Check answer
+        </Button>
+      ) : (
+        <div
+          className={`space-y-2 rounded-xl border p-4 text-sm ${
+            result === "correct"
+              ? "border-emerald-500/40 bg-emerald-500/5"
+              : "border-destructive/40 bg-destructive/5"
+          }`}
+          data-testid="panel-listen-result"
+        >
+          <div className="flex items-center gap-1.5 font-semibold">
+            {result === "correct" ? (
+              <>
+                <Check className="h-4 w-4 text-emerald-600" /> Perfect — that's exactly it!
+              </>
+            ) : (
+              <>
+                <XCircle className="h-4 w-4 text-destructive" /> Not quite. You heard:
+              </>
+            )}
+          </div>
+          <p className="rounded-lg bg-background px-3 py-2 font-medium">{target}</p>
+          {exercise.translation ? (
+            <p className="text-muted-foreground">Meaning: {exercise.translation}</p>
+          ) : null}
+          <WordGlossary glossary={exercise.glossary} translation={undefined} showTranslation={false} />
+          <Button onClick={onNext} className="mt-1 rounded-full" size="sm" data-testid="button-next">
+            {isLast ? "Finish round" : "Next sentence"} <ArrowRight className="ml-1.5 h-4 w-4" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Match the pairs ─────────────────────────────────────────────────────────
+
+export function MatchExercise({
+  exercise,
+  onAnswered,
+  onNext,
+  isLast,
+}: {
+  exercise: LanguageExercise;
+  onAnswered: (correct: boolean) => void;
+  onNext: () => void;
+  isLast: boolean;
+}) {
+  const pairs = useMemo(() => exercise.pairs ?? [], [exercise.pairs]);
+  // Shuffle the English column once so the pairs don't line up in order.
+  const shuffledMeanings = useMemo(() => {
+    const items = pairs.map((p, i) => ({ ...p, index: i }));
+    for (let i = items.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [items[i], items[j]] = [items[j], items[i]];
+    }
+    return items;
+  }, [pairs]);
+
+  const [selectedTerm, setSelectedTerm] = useState<number | null>(null);
+  const [matched, setMatched] = useState<number[]>([]);
+  const [wrongPair, setWrongPair] = useState<number | null>(null);
+  const [mistakes, setMistakes] = useState(0);
+  const done = pairs.length > 0 && matched.length === pairs.length;
+
+  // Report the round exactly once, when the last pair is matched.
+  const reported = useRef(false);
+  useEffect(() => {
+    if (done && !reported.current) {
+      reported.current = true;
+      onAnswered(mistakes === 0);
+    }
+  }, [done, mistakes, onAnswered]);
+
+  const pickMeaning = (index: number) => {
+    if (selectedTerm === null || matched.includes(index)) return;
+    if (selectedTerm === index) {
+      setMatched((m) => [...m, index]);
+      setSelectedTerm(null);
+      setWrongPair(null);
+    } else {
+      setMistakes((n) => n + 1);
+      setWrongPair(index);
+      window.setTimeout(() => setWrongPair(null), 600);
+      setSelectedTerm(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4" data-testid="exercise-match">
+      <div>
+        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Match the pairs
+        </p>
+        <p className="text-base font-medium">
+          {exercise.question || "Tap a word, then tap its meaning."}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          {pairs.map((pair, i) => {
+            const isMatched = matched.includes(i);
+            return (
+              <button
+                key={`term-${i}`}
+                type="button"
+                disabled={isMatched}
+                onClick={() => setSelectedTerm(i)}
+                className={`w-full rounded-xl border px-3 py-2.5 text-left text-sm transition-colors ${
+                  isMatched
+                    ? "border-emerald-500/40 bg-emerald-500/10 text-muted-foreground line-through"
+                    : selectedTerm === i
+                      ? "border-primary bg-primary/10 font-medium"
+                      : "hover:border-primary/50 hover:bg-accent"
+                }`}
+                data-testid={`button-match-term-${i}`}
+              >
+                {pair.term}
+              </button>
+            );
+          })}
+        </div>
+        <div className="space-y-2">
+          {shuffledMeanings.map((item) => {
+            const isMatched = matched.includes(item.index);
+            return (
+              <button
+                key={`meaning-${item.index}`}
+                type="button"
+                disabled={isMatched}
+                onClick={() => pickMeaning(item.index)}
+                className={`w-full rounded-xl border px-3 py-2.5 text-left text-sm transition-colors ${
+                  isMatched
+                    ? "border-emerald-500/40 bg-emerald-500/10 text-muted-foreground line-through"
+                    : wrongPair === item.index
+                      ? "border-destructive bg-destructive/10"
+                      : "hover:border-primary/50 hover:bg-accent"
+                }`}
+                data-testid={`button-match-meaning-${item.index}`}
+              >
+                {item.english}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {done && (
+        <div
+          className={`space-y-2 rounded-xl border p-4 text-sm ${
+            mistakes === 0
+              ? "border-emerald-500/40 bg-emerald-500/5"
+              : "border-amber-500/40 bg-amber-500/5"
+          }`}
+          data-testid="panel-match-result"
+        >
+          <div className="flex items-center gap-1.5 font-semibold">
+            {mistakes === 0 ? (
+              <>
+                <Check className="h-4 w-4 text-emerald-600" /> All matched with no mistakes!
+              </>
+            ) : (
+              <>
+                <Check className="h-4 w-4 text-amber-600" /> All matched — {mistakes}{" "}
+                {mistakes === 1 ? "try" : "tries"} missed. Review them below.
+              </>
+            )}
+          </div>
+          <ul className="space-y-1 text-muted-foreground">
+            {pairs.map((pair, i) => (
+              <li key={`review-${i}`}>
+                <span className="font-medium text-foreground">{pair.term}</span> — {pair.english}
+              </li>
+            ))}
+          </ul>
+          <Button onClick={onNext} className="mt-1 rounded-full" size="sm" data-testid="button-next">
+            {isLast ? "Finish round" : "Next set"} <ArrowRight className="ml-1.5 h-4 w-4" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Daily challenge ─────────────────────────────────────────────────────────
+
+export function DailyChallengeCard({
+  challenge,
+  level,
+  xpIntoLevel,
+  xpForNextLevel,
+}: {
+  challenge: NonNullable<LanguageOverview["dailyChallenge"]>;
+  level: number;
+  xpIntoLevel: number;
+  xpForNextLevel: number;
+}) {
+  const pct = challenge.target > 0 ? Math.min(100, (challenge.progress / challenge.target) * 100) : 0;
+  const levelPct = xpForNextLevel > 0 ? Math.min(100, (xpIntoLevel / xpForNextLevel) * 100) : 0;
+
+  return (
+    <Card data-testid="card-daily-challenge">
+      <CardContent className="space-y-4 p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                challenge.completed
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+              }`}
+            >
+              {challenge.completed ? <Check className="h-4.5 w-4.5" /> : <Target className="h-4.5 w-4.5" />}
+            </div>
+            <div>
+              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Today's challenge
+              </div>
+              <div className="font-semibold leading-tight" data-testid="text-challenge-description">
+                {challenge.description}
+              </div>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400">
+            <Zap className="h-3.5 w-3.5" /> +{challenge.xpReward} XP
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className={`h-full rounded-full transition-all ${
+                challenge.completed ? "bg-emerald-500" : "bg-amber-500"
+              }`}
+              style={{ width: `${pct}%` }}
+              data-testid="bar-challenge-progress"
+            />
+          </div>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span data-testid="text-challenge-progress">
+              {challenge.progress} / {challenge.target}
+            </span>
+            {challenge.completed ? (
+              <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                Done — see you tomorrow!
+              </span>
+            ) : (
+              <span>Resets at midnight</span>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-1.5 border-t pt-3">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-medium" data-testid="text-level">
+              Level {level}
+            </span>
+            <span className="text-muted-foreground">
+              {xpIntoLevel} / {xpForNextLevel} XP
+            </span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${levelPct}%` }}
+            />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 function LanguagePage() {
@@ -842,7 +1286,19 @@ function LanguagePage() {
           difficulty: difficulty as never,
         },
       },
-      { onSuccess: (d) => setProgress(d) },
+      {
+        onSuccess: (d) => {
+          setProgress(d);
+          if (d.challengeCompleted) {
+            toast({
+              title: "Daily challenge complete! 🎉",
+              description: `${d.dailyChallenge?.description ?? "Challenge done"} — +${
+                d.dailyChallenge?.xpReward ?? 0
+              } bonus XP. Come back tomorrow for a new one.`,
+            });
+          }
+        },
+      },
     );
   };
 
@@ -863,6 +1319,13 @@ function LanguagePage() {
   const exercisesDone = progress?.exercisesCompleted ?? overview.data?.exercisesCompleted ?? 0;
   const practicedToday = progress !== null || overview.data?.practicedToday === true;
   const recentWords = overview.data?.recentWords ?? [];
+  // The /complete response carries fresher XP + challenge state than the
+  // cached overview, so prefer it while a round is in progress.
+  const dailyChallenge = progress?.dailyChallenge ?? overview.data?.dailyChallenge ?? null;
+  const level = progress?.level ?? overview.data?.level ?? 1;
+  const xpIntoLevel = progress?.xpIntoLevel ?? overview.data?.xpIntoLevel ?? 0;
+  const xpForNextLevel = progress?.xpForNextLevel ?? overview.data?.xpForNextLevel ?? 100;
+  const totalXp = progress?.xp ?? overview.data?.xp ?? 0;
   const currentMeta = MODE_META.find((m) => m.mode === practicing);
 
   return (
@@ -916,13 +1379,24 @@ function LanguagePage() {
             value={exercisesDone}
           />
           <StatCard
-            icon={Trophy}
+            icon={Zap}
             iconClass="bg-amber-500/10 text-amber-600 dark:text-amber-400"
-            label="Best streak"
-            value={bestStreak}
+            label="Total XP"
+            value={totalXp}
+            hint={`best streak ${bestStreak}`}
           />
         </div>
       )}
+
+      {/* Today's challenge */}
+      {!overview.isLoading && dailyChallenge ? (
+        <DailyChallengeCard
+          challenge={dailyChallenge}
+          level={level}
+          xpIntoLevel={xpIntoLevel}
+          xpForNextLevel={xpForNextLevel}
+        />
+      ) : null}
 
       {/* Main area */}
       {overview.isLoading ? (
@@ -1064,6 +1538,23 @@ function LanguagePage() {
                   onAnswered={(c) => handleAnswered(exercises[index], c)}
                   onNext={handleNext}
                   onTimeUp={handleTimeUp}
+                  isLast={index === exercises.length - 1}
+                />
+              ) : practicing === "listen" ? (
+                <ListenExercise
+                  key={index}
+                  exercise={exercises[index]}
+                  language={targetLanguage}
+                  onAnswered={(c) => handleAnswered(exercises[index], c)}
+                  onNext={handleNext}
+                  isLast={index === exercises.length - 1}
+                />
+              ) : practicing === "match" ? (
+                <MatchExercise
+                  key={index}
+                  exercise={exercises[index]}
+                  onAnswered={(c) => handleAnswered(exercises[index], c)}
+                  onNext={handleNext}
                   isLast={index === exercises.length - 1}
                 />
               ) : practicing === "sentence" ? (

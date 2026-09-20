@@ -32,6 +32,8 @@ export const languageProgressTable = pgTable("language_progress", {
   lastActiveDay: text("last_active_day"), // YYYY-MM-DD in Asia/Dhaka
   exercisesCompleted: integer("exercises_completed").notNull().default(0),
   correctAnswers: integer("correct_answers").notNull().default(0),
+  // Lifetime XP earned from practice and daily challenges (Duolingo-style).
+  xp: integer("xp").notNull().default(0),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()
@@ -53,6 +55,33 @@ export const languageWordsTable = pgTable(
   },
   (t) => ({
     oneWordPerUser: uniqueIndex("language_words_user_word_lang_idx").on(t.userId, t.word, t.language),
+  }),
+);
+
+// ─── Daily challenge (Duolingo-style) ────────────────────────────────────────
+// One row per student per (Dhaka-local) day. The goal is generated on first
+// view of the day and is advanced with SQL-side math from the practice
+// endpoints — never read-then-write.
+export const languageDailyChallengeTable = pgTable(
+  "language_daily_challenge",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    day: text("day").notNull(), // YYYY-MM-DD in Asia/Dhaka
+    // "exercises" | "correct" | "words" — what the student must do today.
+    kind: text("kind").notNull().default("exercises"),
+    target: integer("target").notNull().default(10),
+    progress: integer("progress").notNull().default(0),
+    xpReward: integer("xp_reward").notNull().default(20),
+    // Set once when progress first reaches target, so the reward pays once.
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    oneChallengePerUserDay: uniqueIndex("language_daily_challenge_user_day_idx").on(
+      t.userId,
+      t.day,
+    ),
   }),
 );
 
@@ -95,3 +124,9 @@ export const insertLanguageAnswerSchema = createInsertSchema(languageAnswersTabl
 });
 export type InsertLanguageAnswer = z.infer<typeof insertLanguageAnswerSchema>;
 export type LanguageAnswer = typeof languageAnswersTable.$inferSelect;
+
+export const insertLanguageDailyChallengeSchema = createInsertSchema(
+  languageDailyChallengeTable,
+).omit({ id: true, createdAt: true });
+export type InsertLanguageDailyChallenge = z.infer<typeof insertLanguageDailyChallengeSchema>;
+export type LanguageDailyChallenge = typeof languageDailyChallengeTable.$inferSelect;

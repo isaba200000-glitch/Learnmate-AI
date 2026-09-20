@@ -225,26 +225,40 @@ async function getRealLessonImage(topic: CourseTopic, lessonIndex: number): Prom
 async function generateLessonContent(topic: CourseTopic, lesson: Lesson): Promise<string> {
   const completion = await openai.chat.completions.create({
     model: PREMIUM_AI_MODEL,
-    max_tokens: 1200,
+    // The 8-section structure below (with worked examples, code blocks and
+    // three model answers) does not fit in 1200 tokens — lessons were being
+    // truncated mid-sentence and then cached permanently in that state.
+    max_tokens: 6000,
     messages: [
       {
         role: "system",
         content:
           "You are LearnMate AI's Expert Technology Tutor — a world-class teacher combining the clarity of the best classroom instructors " +
           "with the depth of a university professor. Your students are aged 13–20 with little or no prior knowledge of technology subjects.\n\n" +
+          "ACCURACY COMES FIRST. These lessons are what students learn from, so a confident wrong statement is the worst possible outcome:\n" +
+          "• Every fact, figure, formula, standard and date must be correct. If you are not certain something is true, leave it out.\n" +
+          "• Never invent component names, library functions, API calls, pin numbers or specifications. Use only real, documented ones.\n" +
+          "• All code must be syntactically valid and actually run as written. Mentally execute it before including it.\n" +
+          "• State the language/version or hardware a code sample targets when it matters (e.g. Python 3, Arduino Uno).\n" +
+          "• Use correct SI units and realistic values (a typical LED forward voltage is ~2 V, not 200 V).\n" +
+          "• Where experts genuinely disagree or practice varies, say so rather than presenting one view as settled fact.\n" +
+          "• Prefer timeless explanations over fast-moving specifics; if you cite something current, note that it may change.\n\n" +
           "YOUR TEACHING STYLE:\n" +
           "• Begin with a compelling hook that makes the student genuinely curious.\n" +
           "• Build understanding layer by layer — start simple, then reveal the depth.\n" +
           "• Every abstract concept MUST have a concrete, vivid real-world analogy.\n" +
+          "• Be explicit when an analogy breaks down — half-true mental models cause exam mistakes later.\n" +
           "• Every claim must be explained, not just stated.\n" +
-          "• Use rich markdown formatting: ## headings, bullet points, numbered steps, **bold** key terms, `code` for any code snippets, and ``` blocks for multi-line code.\n\n" +
+          "• Use rich markdown formatting: ## headings, bullet points, numbered steps, **bold** key terms, `code` for any code snippets, and ``` blocks for multi-line code.\n" +
+          "• Write in plain text and markdown only. Never output raw HTML tags or HTML entities.\n\n" +
           "RULES FOR MATHS AND FORMULAS:\n" +
           "• First explain the formula in plain words (e.g. 'Resistance = Voltage ÷ Current').\n" +
           "• Then show it in simple symbolic notation (e.g. R = V / I).\n" +
           "• Always work through a full numerical example with real numbers and units.\n" +
+          "• Check the arithmetic in every worked example; the numbers must actually come out as stated.\n" +
           "• Never use LaTeX, Σ, ∫, ∂, or Greek letters without immediately defining them in plain English.\n\n" +
           "QUALITY BAR: Every lesson must be so clear, engaging and complete that a student who reads it carefully " +
-          "could confidently answer exam questions on the topic without any other resource.",
+          "could confidently answer exam questions on the topic without any other resource — and everything they learn must be correct.",
       },
       {
         role: "user",
@@ -271,7 +285,18 @@ async function generateLessonContent(topic: CourseTopic, lesson: Lesson): Promis
       },
     ],
   });
-  return completion.choices[0]?.message?.content?.trim() ?? "";
+
+  const choice = completion.choices[0];
+  const content = choice?.message?.content?.trim() ?? "";
+
+  // Never cache a lesson the model ran out of room to finish: `length` means
+  // the response hit the token ceiling and the student would be left reading a
+  // sentence that stops mid-word, permanently.
+  if (choice?.finish_reason === "length") {
+    throw new Error("lesson generation truncated (hit the token limit)");
+  }
+
+  return content;
 }
 
 // ─── Startup pre-warm ────────────────────────────────────────────────────────
@@ -866,6 +891,43 @@ router.post("/courses/images/status", async (req, res): Promise<void> => {
   });
 });
 
+// POST /courses/cache/clear
+// Owner-only. Deletes cached lesson TEXT so it regenerates with the current
+// prompt. Lesson content is cached globally and forever, so after changing the
+// generation prompt (e.g. tightening the accuracy rules) existing students
+// would keep reading the old text indefinitely without this.
+//
+// Only touches courseLessonCacheTable — the image tables are deliberately
+// separate so clearing text never costs a round of image regeneration.
+// Optional body: { topic?: string } to clear a single topic.
+router.post("/courses/cache/clear", async (req, res): Promise<void> => {
+  if (!(await isOwnerRequest(req))) {
+    res.status(403).json({ error: "Owner access required." });
+    return;
+  }
+
+  const topicSlug = typeof req.body?.topic === "string" ? req.body.topic.trim() : "";
+
+  if (topicSlug) {
+    const known = COURSE_TOPICS.some((t) => t.slug === topicSlug);
+    if (!known) {
+      res.status(404).json({ error: "Unknown topic." });
+      return;
+    }
+    const deleted = await db
+      .delete(courseLessonCacheTable)
+      .where(eq(courseLessonCacheTable.topic, topicSlug))
+      .returning({ id: courseLessonCacheTable.id });
+    res.json({ cleared: deleted.length, topic: topicSlug });
+    return;
+  }
+
+  const deleted = await db
+    .delete(courseLessonCacheTable)
+    .returning({ id: courseLessonCacheTable.id });
+  res.json({ cleared: deleted.length, topic: null });
+});
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 // GET /courses/overview
@@ -1072,7 +1134,13 @@ router.post("/courses/quiz", requireAuth, async (req, res): Promise<void> => {
           role: "system",
           content:
             "You are LearnMate AI's quiz generator. Generate exactly 5 multiple-choice questions " +
-            "based on a tech lesson for students aged 13-20. " +
+            "based on a tech lesson for students aged 13-20.\n" +
+            "ACCURACY RULES — a wrong answer key teaches the student the wrong thing:\n" +
+            "• Exactly one option must be correct, and the answer letter must match it.\n" +
+            "• Every fact, figure and code snippet must be technically correct and real.\n" +
+            "• Wrong options must be plausible misconceptions, never absurd or joke answers.\n" +
+            "• Do not write questions about material the lesson does not cover.\n" +
+            "• Plain text only: no HTML tags and no HTML entities.\n" +
             "Return ONLY valid JSON — no markdown, no explanation, no code fences. " +
             'Format: {"questions":[{"q":"...","options":["A)...","B)...","C)...","D)..."],"answer":"A"},...]}',
         },
@@ -1084,7 +1152,13 @@ router.post("/courses/quiz", requireAuth, async (req, res): Promise<void> => {
     });
 
     const raw = completion.choices[0]?.message?.content?.trim() ?? "";
-    const parsed = JSON.parse(raw);
+    // Models often wrap JSON in ```json fences despite being told not to;
+    // strip them rather than failing the whole request.
+    const unfenced = raw
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/, "")
+      .trim();
+    const parsed = JSON.parse(unfenced);
     if (!Array.isArray(parsed.questions)) throw new Error("bad format");
     res.json({ questions: parsed.questions });
   } catch (err) {
@@ -1092,5 +1166,8 @@ router.post("/courses/quiz", requireAuth, async (req, res): Promise<void> => {
     res.status(502).json({ error: "Could not generate quiz. Please try again." });
   }
 });
+
+/** Internals exposed for unit tests only. Not part of the route surface. */
+export const __test = { generateLessonContent };
 
 export default router;

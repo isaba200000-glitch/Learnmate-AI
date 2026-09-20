@@ -14,4 +14,6 @@ export const LanguageExercisesInputMode = {
   grammar: 'grammar',
   sentence: 'sentence',
   translate: 'translate',
+  listen: 'listen',
+  match: 'match',
 } as const;

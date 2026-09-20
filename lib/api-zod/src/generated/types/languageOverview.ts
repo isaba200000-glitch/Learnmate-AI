@@ -5,6 +5,7 @@
  * LearnMate AI API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { LanguageDailyChallenge } from './languageDailyChallenge';
 import type { LanguageOverviewPlan } from './languageOverviewPlan';
 import type { LanguageWordItem } from './languageWordItem';
 
@@ -26,5 +27,11 @@ export interface LanguageOverview {
   correctAnswers: number;
   wordsLearned: number;
   practicedToday: boolean;
+  /** Lifetime XP earned from practice and daily challenges */
+  xp?: number;
+  level?: number;
+  xpIntoLevel?: number;
+  xpForNextLevel?: number;
+  dailyChallenge?: LanguageDailyChallenge | null;
   recentWords: LanguageWordItem[];
 }

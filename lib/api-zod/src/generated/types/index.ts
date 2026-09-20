@@ -80,6 +80,8 @@ export * from './languageCompleteInput';
 export * from './languageCompleteInputDifficulty';
 export * from './languageCompleteInputLanguage';
 export * from './languageCompleteInputType';
+export * from './languageDailyChallenge';
+export * from './languageDailyChallengeKind';
 export * from './languageExercise';
 export * from './languageExercisesInput';
 export * from './languageExercisesInputDifficulty';

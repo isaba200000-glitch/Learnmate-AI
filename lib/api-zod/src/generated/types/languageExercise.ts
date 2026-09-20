@@ -23,4 +23,6 @@ export interface LanguageExercise {
   hint?: string;
   translation?: string;
   glossary?: WordGloss[];
+  /** Term/meaning pairs for a "match" exercise */
+  pairs?: WordGloss[];
 }

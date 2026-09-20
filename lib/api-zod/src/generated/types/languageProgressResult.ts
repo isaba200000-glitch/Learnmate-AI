@@ -5,6 +5,7 @@
  * LearnMate AI API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { LanguageDailyChallenge } from './languageDailyChallenge';
 import type { LanguageLevelSuggestion } from './languageLevelSuggestion';
 
 export interface LanguageProgressResult {
@@ -14,4 +15,11 @@ export interface LanguageProgressResult {
   correctAnswers: number;
   wordsLearned: number;
   levelSuggestion?: LanguageLevelSuggestion | null;
+  xpAwarded?: number;
+  xp?: number;
+  level?: number;
+  xpIntoLevel?: number;
+  xpForNextLevel?: number;
+  dailyChallenge?: LanguageDailyChallenge | null;
+  challengeCompleted?: boolean;
 }

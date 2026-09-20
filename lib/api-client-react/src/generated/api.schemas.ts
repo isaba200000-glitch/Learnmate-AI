@@ -708,6 +708,27 @@ export const LanguageOverviewPlan = {
   owner: 'owner',
 } as const;
 
+export type LanguageDailyChallengeKind = typeof LanguageDailyChallengeKind[keyof typeof LanguageDailyChallengeKind];
+
+
+export const LanguageDailyChallengeKind = {
+  exercises: 'exercises',
+  correct: 'correct',
+  words: 'words',
+} as const;
+
+/**
+ * Today's Duolingo-style goal; refreshes every day (Asia/Dhaka)
+ */
+export interface LanguageDailyChallenge {
+  kind: LanguageDailyChallengeKind;
+  description: string;
+  target: number;
+  progress: number;
+  completed: boolean;
+  xpReward: number;
+}
+
 export interface LanguageOverview {
   usedSeconds: number;
   /**
@@ -726,6 +747,12 @@ export interface LanguageOverview {
   correctAnswers: number;
   wordsLearned: number;
   practicedToday: boolean;
+  /** Lifetime XP earned from practice and daily challenges */
+  xp?: number;
+  level?: number;
+  xpIntoLevel?: number;
+  xpForNextLevel?: number;
+  dailyChallenge?: LanguageDailyChallenge | null;
   recentWords: LanguageWordItem[];
 }
 
@@ -757,6 +784,8 @@ export const LanguageExercisesInputMode = {
   grammar: 'grammar',
   sentence: 'sentence',
   translate: 'translate',
+  listen: 'listen',
+  match: 'match',
 } as const;
 
 export type LanguageExercisesInputDifficulty = typeof LanguageExercisesInputDifficulty[keyof typeof LanguageExercisesInputDifficulty];
@@ -796,6 +825,8 @@ export const LanguageExerciseType = {
   grammar: 'grammar',
   sentence: 'sentence',
   translate: 'translate',
+  listen: 'listen',
+  match: 'match',
 } as const;
 
 export interface WordGloss {
@@ -818,6 +849,8 @@ export interface LanguageExercise {
   hint?: string;
   translation?: string;
   glossary?: WordGloss[];
+  /** Term/meaning pairs for a "match" exercise */
+  pairs?: WordGloss[];
 }
 
 export interface LanguageExercisesResult {
@@ -1083,6 +1116,8 @@ export const LanguageCompleteInputType = {
   grammar: 'grammar',
   sentence: 'sentence',
   translate: 'translate',
+  listen: 'listen',
+  match: 'match',
 } as const;
 
 export type LanguageCompleteInputLanguage = typeof LanguageCompleteInputLanguage[keyof typeof LanguageCompleteInputLanguage];
@@ -1155,6 +1190,13 @@ export interface LanguageProgressResult {
   correctAnswers: number;
   wordsLearned: number;
   levelSuggestion?: LanguageLevelSuggestion | null;
+  xpAwarded?: number;
+  xp?: number;
+  level?: number;
+  xpIntoLevel?: number;
+  xpForNextLevel?: number;
+  dailyChallenge?: LanguageDailyChallenge | null;
+  challengeCompleted?: boolean;
 }
 
 export interface PaymentInput {

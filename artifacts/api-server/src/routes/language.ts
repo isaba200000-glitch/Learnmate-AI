@@ -21,6 +21,7 @@ import {
   languageProgressTable,
   languageWordsTable,
   languageAnswersTable,
+  languageDailyChallengeTable,
 } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import { openai, PREMIUM_AI_MODEL } from "../lib/openai";
@@ -180,6 +181,153 @@ async function requireTimeAndCharge(
 
 // ─── Overview ────────────────────────────────────────────────────────────────
 
+// ─── Daily challenge (Duolingo-style) ────────────────────────────────────────
+//
+// A small, achievable goal that refreshes every Dhaka day, plus XP. This is a
+// FREE feature for every tier — it is motivation, not AI, and gating it would
+// punish exactly the students who need the habit most. The existing daily time
+// caps are untouched: a challenge never grants extra practice time.
+
+const XP_PER_CORRECT = 10;
+const XP_PER_ATTEMPT = 2;
+
+type ChallengeKind = "exercises" | "correct" | "words";
+
+interface ChallengeSpec {
+  kind: ChallengeKind;
+  target: number;
+  xpReward: number;
+}
+
+// Rotate deterministically by day so every student gets the same variety and
+// the goal cannot be re-rolled by refreshing.
+const CHALLENGE_ROTATION: ChallengeSpec[] = [
+  { kind: "exercises", target: 10, xpReward: 20 },
+  { kind: "correct", target: 8, xpReward: 30 },
+  { kind: "words", target: 3, xpReward: 25 },
+  { kind: "exercises", target: 15, xpReward: 30 },
+  { kind: "correct", target: 5, xpReward: 20 },
+];
+
+function challengeForDay(day: string): ChallengeSpec {
+  // Stable hash of YYYY-MM-DD → rotation index.
+  let hash = 0;
+  for (let i = 0; i < day.length; i++) hash = (hash * 31 + day.charCodeAt(i)) >>> 0;
+  return CHALLENGE_ROTATION[hash % CHALLENGE_ROTATION.length];
+}
+
+export function describeChallenge(kind: string, target: number): string {
+  switch (kind) {
+    case "correct":
+      return `Answer ${target} exercises correctly`;
+    case "words":
+      return `Learn ${target} new words`;
+    default:
+      return `Complete ${target} exercises`;
+  }
+}
+
+// XP levels grow gently: level N needs 100 * N XP in total. Keeps early
+// levels fast (the motivating part) without runaway numbers later.
+export function levelFields(xp: number) {
+  const safeXp = Math.max(0, Math.floor(xp));
+  let level = 1;
+  let spent = 0;
+  let need = 100;
+  while (safeXp - spent >= need) {
+    spent += need;
+    level += 1;
+    need = 100 * level;
+  }
+  return {
+    level,
+    xpIntoLevel: safeXp - spent,
+    xpForNextLevel: need,
+  };
+}
+
+/** Fetch today's challenge row, creating it on first view of the day. */
+async function getOrCreateChallenge(userId: string, day: string) {
+  const spec = challengeForDay(day);
+  await db
+    .insert(languageDailyChallengeTable)
+    .values({ userId, day, kind: spec.kind, target: spec.target, xpReward: spec.xpReward })
+    .onConflictDoNothing();
+
+  const [row] = await db
+    .select()
+    .from(languageDailyChallengeTable)
+    .where(
+      and(
+        eq(languageDailyChallengeTable.userId, userId),
+        eq(languageDailyChallengeTable.day, day),
+      ),
+    )
+    .limit(1);
+  return row;
+}
+
+function challengePayload(row: typeof languageDailyChallengeTable.$inferSelect | undefined) {
+  if (!row) return null;
+  const progress = Math.min(row.progress, row.target);
+  return {
+    kind: row.kind,
+    description: describeChallenge(row.kind, row.target),
+    target: row.target,
+    progress,
+    completed: !!row.completedAt,
+    xpReward: row.xpReward,
+  };
+}
+
+/**
+ * Advance today's challenge after a graded answer and award XP.
+ * All counter math is SQL-side so concurrent answers cannot lose progress.
+ * Returns the XP awarded and whether this answer completed the challenge.
+ */
+async function advanceChallenge(
+  userId: string,
+  day: string,
+  opts: { correct: boolean; learnedWord: boolean },
+): Promise<{ xpAwarded: number; justCompleted: boolean; challenge: ReturnType<typeof challengePayload> }> {
+  const row = await getOrCreateChallenge(userId, day);
+  if (!row) return { xpAwarded: 0, justCompleted: false, challenge: null };
+
+  let delta = 0;
+  if (row.kind === "exercises") delta = 1;
+  else if (row.kind === "correct") delta = opts.correct ? 1 : 0;
+  else if (row.kind === "words") delta = opts.learnedWord ? 1 : 0;
+
+  let updated = row;
+  if (delta > 0 && !row.completedAt) {
+    // Stamp completedAt in the same statement that crosses the target, so the
+    // bonus can only ever be paid once even under concurrent requests.
+    const [next] = await db
+      .update(languageDailyChallengeTable)
+      .set({
+        progress: sql`LEAST(${languageDailyChallengeTable.progress} + ${delta}, ${languageDailyChallengeTable.target})`,
+        completedAt: sql`CASE
+          WHEN ${languageDailyChallengeTable.completedAt} IS NULL
+           AND ${languageDailyChallengeTable.progress} + ${delta} >= ${languageDailyChallengeTable.target}
+          THEN now() ELSE ${languageDailyChallengeTable.completedAt} END`,
+      })
+      .where(
+        and(
+          eq(languageDailyChallengeTable.id, row.id),
+          sql`${languageDailyChallengeTable.completedAt} IS NULL`,
+        ),
+      )
+      .returning();
+    if (next) updated = next;
+  }
+
+  const justCompleted = !row.completedAt && !!updated.completedAt;
+  const xpAwarded =
+    (opts.correct ? XP_PER_CORRECT : XP_PER_ATTEMPT) + (justCompleted ? updated.xpReward : 0);
+
+  return { xpAwarded, justCompleted, challenge: challengePayload(updated) };
+}
+
 router.get("/language/overview", requireAuth, async (req, res): Promise<void> => {
   const userId = (req as AuthRequest).userId;
   const lang = pickLanguage(req.query.language);
@@ -213,6 +361,9 @@ router.get("/language/overview", requireAuth, async (req, res): Promise<void> =>
       ? progress.streak
       : 0;
 
+  const challenge = await getOrCreateChallenge(userId, today);
+  const xp = progress?.xp ?? 0;
+
   res.json({
     ...usageFields(used, cap),
     plan: planOf(cap),
@@ -222,6 +373,9 @@ router.get("/language/overview", requireAuth, async (req, res): Promise<void> =>
     correctAnswers: progress?.correctAnswers ?? 0,
     wordsLearned: wordCount?.count ?? 0,
     practicedToday: progress?.lastActiveDay === today,
+    xp,
+    ...levelFields(xp),
+    dailyChallenge: challengePayload(challenge),
     recentWords: recentWords.map((w) => ({
       word: w.word,
       meaning: w.meaning,
@@ -242,7 +396,11 @@ router.post("/language/tick", requireAuth, async (req, res): Promise<void> => {
 
 // ─── Exercise generation ─────────────────────────────────────────────────────
 
-const MODES = ["vocab", "grammar", "sentence", "translate"] as const;
+// "listen" and "match" are the Duolingo-style drills: hear-and-type (spoken by
+// the browser's speech synthesis, so no audio files are needed) and tap-the-
+// matching-pairs. Both are graded locally by comparison, so they cost no extra
+// AI calls beyond the batch that generated them.
+const MODES = ["vocab", "grammar", "sentence", "translate", "listen", "match"] as const;
 type Mode = (typeof MODES)[number];
 const DIFFICULTIES = ["beginner", "intermediate", "advanced"] as const;
 const LANGUAGES = ["English", "Spanish", "French", "Portuguese", "German", "Arabic", "Hindi", "Japanese", "Chinese", "Korean", "Turkish", "Italian"] as const;
@@ -269,6 +427,7 @@ interface RawExercise {
   sentence?: unknown;
   translation?: unknown;
   glossary?: unknown;
+  pairs?: unknown;
 }
 
 const str = (v: unknown, max = 600): string =>
@@ -325,6 +484,24 @@ function cleanExercise(raw: RawExercise, mode: Mode): Record<string, unknown> | 
     if (!sentence) return null;
     return { type: "translate", sentence, hint: str(raw.hint, 300), glossary: cleanGlossary(raw.glossary) };
   }
+  if (mode === "listen") {
+    // The client speaks `sentence` aloud and hides it until the answer is in.
+    const sentence = str(raw.sentence, 300);
+    if (!sentence) return null;
+    return {
+      type: "listen",
+      sentence,
+      translation: str(raw.translation, 300),
+      hint: str(raw.hint, 300),
+      glossary: cleanGlossary(raw.glossary),
+    };
+  }
+  if (mode === "match") {
+    // 4-6 term/english pairs the student taps together.
+    const pairs = cleanGlossary(raw.pairs);
+    if (pairs.length < 3) return null;
+    return { type: "match", pairs: pairs.slice(0, 6), question: str(raw.question, 200) };
+  }
   const incorrect = str(raw.incorrect, 400);
   if (!incorrect) return null;
   return {
@@ -346,7 +523,7 @@ router.post("/language/exercises", requireAuth, async (req, res): Promise<void> 
   const lang = pickLanguage(language);
 
   if (typeof mode !== "string" || !MODES.includes(mode as Mode)) {
-    res.status(400).json({ error: "mode must be one of: vocab, grammar, sentence, translate" });
+    res.status(400).json({ error: `mode must be one of: ${MODES.join(", ")}` });
     return;
   }
   const level =
@@ -390,6 +567,29 @@ router.post("/language/exercises", requireAuth, async (req, res): Promise<void> 
       ` Include a short hint in simple English (e.g. the meaning of one tricky word) that nudges the student without giving away the full translation.` +
       ` Also include a glossary translating EVERY word of the ${lang} sentence into simple English, in sentence order, so a complete beginner can work it out word by word.` +
       ` Respond as JSON exactly matching: {"exercises":[{"type":"translate","sentence":"...","hint":"...","glossary":[{"term":"...","english":"..."}]}]}`;
+  } else if (mode === "listen") {
+    userPrompt =
+      `Create ${EXERCISES_PER_BATCH} listening exercises at ${level} level for a Bangla-speaking school student learning ${lang}.` +
+      ` Each is ONE short, natural, everyday ${lang} sentence (4-10 words) that will be read aloud to the student, who must type exactly what they hear.` +
+      ` Use only common words and plain punctuation so the sentence is easy to hear and spell at ${level} level. Do not use numerals — write numbers as words.` +
+      ` Also give the full English translation, a short hint in simple English about the topic of the sentence (never the words themselves), and a glossary translating EVERY word of the sentence into simple English, in order.` +
+      ` Respond as JSON exactly matching: {"exercises":[{"type":"listen","sentence":"...","translation":"...","hint":"...","glossary":[{"term":"...","english":"..."}]}]}`;
+  } else if (mode === "match") {
+    const known = await db
+      .select({ word: languageWordsTable.word })
+      .from(languageWordsTable)
+      .where(and(eq(languageWordsTable.userId, userId), eq(languageWordsTable.language, lang)))
+      .orderBy(desc(languageWordsTable.learnedAt))
+      .limit(20);
+    const revise = known.length
+      ? ` Where they fit naturally, reuse some of these words the student has already met so this doubles as revision: ${known.map((k) => k.word).join(", ")}.`
+      : "";
+    userPrompt =
+      `Create ${EXERCISES_PER_BATCH} "match the pairs" exercises at ${level} level for a Bangla-speaking school student learning ${lang}.` +
+      ` Each exercise is a set of exactly 5 pairs: a ${lang} word (in the normal script of ${lang}) and its simple English meaning.${revise}` +
+      ` Within one exercise, keep the words related to a single everyday theme (e.g. food, school, family, travel) and make sure no two English meanings are synonyms, so each pair has exactly one correct match.` +
+      ` Also give a short title for the theme as the question, like "Match the food words".` +
+      ` Respond as JSON exactly matching: {"exercises":[{"type":"match","question":"...","pairs":[{"term":"...","english":"..."}]}]}`;
   } else {
     userPrompt =
       `Create ${EXERCISES_PER_BATCH} "fix the sentence" exercises at ${level} level for a Bangla-speaking school student learning ${lang}.` +
@@ -647,7 +847,7 @@ router.post("/language/complete", requireAuth, async (req, res): Promise<void> =
       : "intermediate";
 
   if (typeof body.type !== "string" || !MODES.includes(body.type as Mode)) {
-    res.status(400).json({ error: "type must be one of: vocab, grammar, sentence, translate" });
+    res.status(400).json({ error: `type must be one of: ${MODES.join(", ")}` });
     return;
   }
   if (typeof body.correct !== "boolean") {
@@ -683,6 +883,14 @@ router.post("/language/complete", requireAuth, async (req, res): Promise<void> =
   const bestStreak = Math.max(progress?.bestStreak ?? 0, streak);
   const correctDelta = body.correct ? 1 : 0;
 
+  // A vocab word is "learned" the first time it is answered correctly.
+  const word = str(body.word, 80);
+  const learnsWord = body.type === "vocab" && body.correct && !!word;
+  const { xpAwarded, justCompleted, challenge } = await advanceChallenge(userId, today, {
+    correct: body.correct,
+    learnedWord: learnsWord,
+  });
+
   const [updated] = await db
     .insert(languageProgressTable)
     .values({
@@ -692,6 +900,7 @@ router.post("/language/complete", requireAuth, async (req, res): Promise<void> =
       lastActiveDay: today,
       exercisesCompleted: 1,
       correctAnswers: correctDelta,
+      xp: xpAwarded,
     })
     .onConflictDoUpdate({
       target: languageProgressTable.userId,
@@ -701,14 +910,14 @@ router.post("/language/complete", requireAuth, async (req, res): Promise<void> =
         lastActiveDay: today,
         exercisesCompleted: sql`${languageProgressTable.exercisesCompleted} + 1`,
         correctAnswers: sql`${languageProgressTable.correctAnswers} + ${correctDelta}`,
+        xp: sql`${languageProgressTable.xp} + ${xpAwarded}`,
         updatedAt: sql`now()`,
       },
     })
     .returning();
 
   // A correctly answered vocab exercise adds the word to the student's list.
-  const word = str(body.word, 80);
-  if (body.type === "vocab" && body.correct && word) {
+  if (learnsWord) {
     await db
       .insert(languageWordsTable)
       .values({
@@ -736,6 +945,11 @@ router.post("/language/complete", requireAuth, async (req, res): Promise<void> =
     correctAnswers: updated?.correctAnswers ?? correctDelta,
     wordsLearned: wordCount?.count ?? 0,
     levelSuggestion,
+    xpAwarded,
+    xp: updated?.xp ?? xpAwarded,
+    ...levelFields(updated?.xp ?? xpAwarded),
+    dailyChallenge: challenge,
+    challengeCompleted: justCompleted,
   });
 });
 
