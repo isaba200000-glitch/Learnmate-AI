@@ -349,7 +349,7 @@ router.post("/assistant/chat", requireAuth, async (req, res): Promise<void> => {
     res.end();
   } catch (err: unknown) {
     const e = err as { message?: string; status?: number; error?: unknown };
-    req.log.error(
+    req.log?.error(
       { errMsg: e.message, errStatus: e.status, errBody: e.error ?? err },
       "assistant chat failed",
     );

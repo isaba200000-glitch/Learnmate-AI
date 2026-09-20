@@ -437,7 +437,7 @@ router.post("/language/exercises", requireAuth, async (req, res): Promise<void> 
 
     res.json({ exercises: cleaned });
   } catch (err) {
-    req.log.error({ err }, "language exercise generation failed");
+    req.log?.error({ err }, "language exercise generation failed");
     res.status(502).json({ error: "AI generation failed. Please try again." });
   }
 });
@@ -504,7 +504,7 @@ router.post("/language/grade-sentence", requireAuth, async (req, res): Promise<v
       feedback: str(parsed.feedback, 800),
     });
   } catch (err) {
-    req.log.error({ err }, "sentence grading failed");
+    req.log?.error({ err }, "sentence grading failed");
     res.status(502).json({ error: "AI grading failed. Please try again." });
   }
 });
@@ -571,7 +571,7 @@ router.post("/language/grade-translation", requireAuth, async (req, res): Promis
       feedback: str(parsed.feedback, 800),
     });
   } catch (err) {
-    req.log.error({ err }, "translation grading failed");
+    req.log?.error({ err }, "translation grading failed");
     res.status(502).json({ error: "AI grading failed. Please try again." });
   }
 });

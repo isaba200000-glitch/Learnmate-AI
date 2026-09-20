@@ -179,7 +179,7 @@ async function createWhopCheckoutSession(
     await db.insert(whopCheckoutsTable).values({ userId, checkoutId: c.id, planId });
     res.json({ url: c.purchase_url, days, label });
   } catch (err) {
-    req.log.error({ err }, "whop checkout creation failed");
+    req.log?.error({ err }, "whop checkout creation failed");
     res.status(502).json({ error: "Could not start the card payment. Please try again." });
   }
 }
@@ -216,7 +216,19 @@ router.post("/premium/whop/verify", requireAuth, async (req, res): Promise<void>
     .limit(10);
 
   if (open.length === 0) {
-    res.json({ granted: false, alreadyActive: false, expiresAt: null });
+    // Nothing to grant — but still report the CURRENT subscription state.
+    // Hardcoding alreadyActive:false told an active subscriber they had no
+    // premium whenever they had no pending checkout.
+    const [user] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.userId, userId))
+      .limit(1);
+    res.json({
+      granted: false,
+      alreadyActive: isPremiumActive(user?.premiumExpiresAt),
+      expiresAt: user?.premiumExpiresAt?.toISOString() ?? null,
+    });
     return;
   }
 
@@ -240,7 +252,17 @@ router.post("/premium/whop/verify", requireAuth, async (req, res): Promise<void>
     }>).find((p) => p.status === "paid" || p.substatus === "succeeded");
 
     if (!paid?.id) {
-      res.json({ granted: false, alreadyActive: false, expiresAt: null });
+      // Checkout exists but no captured payment yet — report the real state.
+      const [user] = await db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.userId, userId))
+        .limit(1);
+      res.json({
+        granted: false,
+        alreadyActive: isPremiumActive(user?.premiumExpiresAt),
+        expiresAt: user?.premiumExpiresAt?.toISOString() ?? null,
+      });
       return;
     }
 
@@ -310,7 +332,7 @@ router.post("/premium/whop/verify", requireAuth, async (req, res): Promise<void>
 
     res.json({ granted: true, alreadyActive: false, expiresAt: result.toISOString() });
   } catch (err) {
-    req.log.error({ err }, "whop payment verification failed");
+    req.log?.error({ err }, "whop payment verification failed");
     res.status(502).json({ error: "Could not verify the card payment yet. Please try again in a moment." });
   }
 });
@@ -381,7 +403,7 @@ router.post(
 
       const choice = completion.choices[0];
 
-      req.log.info(
+      req.log?.info(
         {
           finishReason: choice?.finish_reason,
           contentLength: choice?.message?.content?.length ?? 0,
@@ -396,7 +418,7 @@ router.post(
       }
       res.json({ result });
     } catch (err) {
-      req.log.error({ err }, "smart-notes generation failed");
+      req.log?.error({ err }, "smart-notes generation failed");
       res.status(502).json({ error: "AI generation failed. Please try again." });
     }
   },
@@ -477,7 +499,7 @@ router.post(
 
       res.json({ questions: cleaned });
     } catch (err) {
-      req.log.error({ err }, "important-questions generation failed");
+      req.log?.error({ err }, "important-questions generation failed");
       res.status(502).json({ error: "AI generation failed. Please try again." });
     }
   },

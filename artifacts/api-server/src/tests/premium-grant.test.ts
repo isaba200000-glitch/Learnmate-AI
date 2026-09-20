@@ -78,6 +78,10 @@ const dbMock = {
   insert: vi.fn().mockImplementation(() => {
     return insertChain(nextInsertReturning);
   }),
+  // The verify route wraps claim + grant + history in a single transaction.
+  // Run the callback against the same mock so the chained update/insert
+  // expectations below still apply.
+  transaction: vi.fn().mockImplementation(async (fn: (tx: unknown) => unknown) => fn(dbMock)),
 };
 
 vi.mock("@workspace/db", () => ({

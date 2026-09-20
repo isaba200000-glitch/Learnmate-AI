@@ -249,7 +249,7 @@ router.post("/exam-plans", requireAuth, async (req, res): Promise<void> => {
       deep: tier !== "free",
     });
   } catch (err) {
-    req.log.error({ err }, "exam plan generation failed");
+    req.log?.error({ err }, "exam plan generation failed");
     res.status(502).json({ error: "AI plan generation failed. Please try again." });
     return;
   }
@@ -378,7 +378,7 @@ router.post("/exam-plans/:planId/regenerate", requireAuth, async (req, res): Pro
       adjustment,
     });
   } catch (err) {
-    req.log.error({ err }, "exam plan regeneration failed");
+    req.log?.error({ err }, "exam plan regeneration failed");
     res.status(502).json({ error: "AI plan generation failed. Please try again." });
     return;
   }
